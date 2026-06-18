@@ -35,6 +35,7 @@ public class UserUzduotisController : ControllerBase
         int userId = GetUserId();
         var items = await _service.GetByUserIdAsync(userId);
 
+        // galima naudoti .Any vietoj count
         return items.Count == 0 ? NotFound("You have no tasks") : Ok(items);
     }
 
