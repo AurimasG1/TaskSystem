@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskSystem.Common.DTO;
 using TaskSystem.Services.Implementation;
 using TaskSystem.Services.Interface;
 
@@ -17,13 +19,13 @@ public class AuthController : ControllerBase
         _jwt = jwt;
     }
 
-    public record RegisterRequest(string Email, string Password, string Role = "user");
-
-    public record LoginRequest(string Email, string Password);
-
     [HttpPost("register")]
+    [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
         var ok = await _users.RegisterAsync(req.Email, req.Password, req.Role);
         if (!ok)
             return BadRequest("User already exists");
@@ -32,8 +34,12 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
         var user = await _users.LoginAsync(req.Email, req.Password);
         if (user == null)
             return Unauthorized("Invalid credentials");
