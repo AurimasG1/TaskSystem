@@ -41,7 +41,6 @@ docker compose up -d
 dotnet user-secrets init
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "server=localhost;port=3306;database=tasksystem;user=root;password=root"
 dotnet user-secrets set "Jwt:Key" "ĮRAŠYK_SAVO_SLAPTA_RAKTĄ"
-dotnet user-secrets set "Jwt:Issuer" "TaskSystemAPI"
 ```
 
 Patikrinti
