@@ -49,7 +49,14 @@ Patikrinti
 dotnet user-secrets list
 ```
 
-## 1.4. Paleisti API
+## 1.4. Update database
+
+```
+cd TaskSystem/
+dotnet ef database update -p TaskSystem.Data/ -s TaskSystem.API/
+```
+
+## 1.5. Paleisti API
 
 ```
 cd TaskSystem/TaskSystem.API/

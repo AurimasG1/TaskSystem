@@ -1,7 +1,5 @@
-using Microsoft.EntityFrameworkCore;
 using Moq;
 using TaskSystem.Common.DTO;
-using TaskSystem.Data;
 using TaskSystem.Entities;
 using TaskSystem.Repositories.Interface;
 using TaskSystem.Services.Implementation;
@@ -10,37 +8,21 @@ namespace TaskSystem.Tests;
 
 public class UzduotisServiceTests
 {
-    // Sukuria unikalią InMemory duomenų bazę kiekvienam testui,
-    // kad testai būtų izoliuoti ir nesidalintų duomenimis.
-    private AppDbContext CreateDbContext()
+    private UzduotisService CreateService(Mock<IUzduotisRepository> repoMock)
     {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        return new AppDbContext(options);
-    }
-
-    // Sukuria UzduotisService su netikru (mock) repository ir InMemory DB.
-    private UzduotisService CreateService(AppDbContext db, Mock<IUzduotisRepository> repoMock)
-    {
-        return new UzduotisService(repoMock.Object, db);
+        return new UzduotisService(repoMock.Object);
     }
 
     // ------------------------------------------------------------
     // TESTAS 1:
     // Tikrina, ar servisas teisingai grąžina paskutinę naudotojo
     // užduotį, kai repository ją randa.
-    //
-    // Tai tikrina verslo logiką: entity → DTO konversiją ir
-    // teisingą duomenų grąžinimą.
     // ------------------------------------------------------------
     [Fact]
     public async Task GetLastByUserIdAsync_ReturnsDto_WhenUzduotisExists()
     {
-        var db = CreateDbContext();
         var repoMock = new Mock<IUzduotisRepository>();
-        var service = CreateService(db, repoMock);
+        var service = CreateService(repoMock);
 
         int userId = 1;
 
@@ -68,21 +50,17 @@ public class UzduotisServiceTests
 
     // ------------------------------------------------------------
     // TESTAS 2:
-    // Tikrina, ar servisas meta ArgumentException, kai bandoma
-    // sukurti užduotį be Title.
-    //
-    // Tai tikrina verslo taisyklę: Title yra privalomas laukas.
+    // Tikrina, ar servisas meta ArgumentException, kai Title tuščias.
     // ------------------------------------------------------------
     [Fact]
     public async Task CreateAsync_ThrowsException_WhenTitleIsMissing()
     {
-        var db = CreateDbContext();
         var repoMock = new Mock<IUzduotisRepository>();
-        var service = CreateService(db, repoMock);
+        var service = CreateService(repoMock);
 
         var request = new UzduotisRequestDto
         {
-            Title = "", // neteisingas Title
+            Title = "",
             Description = "Test",
             StatusId = 1,
         };
@@ -92,18 +70,13 @@ public class UzduotisServiceTests
 
     // ------------------------------------------------------------
     // TESTAS 3:
-    // Tikrina, ar servisas atnaujina UpdatedAt lauką, kai
-    // užduotis yra modifikuojama.
-    //
-    // Tai tikrina laiko logiką: UpdatedAt turi būti naujesnis
-    // už CreatedAt po atnaujinimo.
+    // Tikrina, ar servisas atnaujina UpdatedAt lauką.
     // ------------------------------------------------------------
     [Fact]
     public async Task UpdateAsync_UpdatesUpdatedAt_WhenUzduotisIsModified()
     {
-        var db = CreateDbContext();
         var repoMock = new Mock<IUzduotisRepository>();
-        var service = CreateService(db, repoMock);
+        var service = CreateService(repoMock);
 
         var uzduotis = new Uzduotis
         {
@@ -116,8 +89,7 @@ public class UzduotisServiceTests
             UpdatedAt = DateTime.UtcNow.AddMinutes(-20),
         };
 
-        db.Uzduotys.Add(uzduotis);
-        db.SaveChanges();
+        repoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(uzduotis);
 
         var request = new UzduotisUpdateRequestDto
         {
@@ -128,30 +100,39 @@ public class UzduotisServiceTests
 
         await service.UpdateAsync(1, request, userId: 1);
 
-        var updated = db.Uzduotys.First(u => u.Id == 1);
-
-        Assert.True(updated.UpdatedAt > uzduotis.CreatedAt);
+        Assert.True(uzduotis.UpdatedAt > uzduotis.CreatedAt);
     }
 
     // ------------------------------------------------------------
     // TESTAS 4:
-    // Tikrina, ar servisas iškviečia repository metodą
-    // ResetLastUzduotisAsync.
-    //
-    // Tai tikrina, ar servisas teisingai deleguoja darbą į repo.
+    // Tikrina, ar servisas iškviečia repository metodą ResetLastUzduotisAsync.
     // ------------------------------------------------------------
     [Fact]
-    public async Task ResetLastUzduotisAsync_CallsRepositoryMethod()
+    public async Task ResetLastUzduotisAsync_UpdatesEntityAndSaves()
     {
-        var db = CreateDbContext();
         var repoMock = new Mock<IUzduotisRepository>();
-        var service = CreateService(db, repoMock);
+        var service = new UzduotisService(repoMock.Object);
 
-        repoMock.Setup(r => r.ResetLastUzduotisAsync(1)).ReturnsAsync(true);
+        var uzduotis = new Uzduotis
+        {
+            Id = 1,
+            Title = "Old",
+            Description = "Old desc",
+            StatusId = 5,
+            UserId = 1,
+            UpdatedAt = DateTime.UtcNow.AddMinutes(-10),
+        };
+
+        repoMock.Setup(r => r.GetLastByUserIdAsync(1)).ReturnsAsync(uzduotis);
 
         var result = await service.ResetLastUzduotisAsync(1);
 
         Assert.True(result);
-        repoMock.Verify(r => r.ResetLastUzduotisAsync(1), Times.Once);
+        Assert.Equal("(reset) Old", uzduotis.Title);
+        Assert.Null(uzduotis.Description);
+        Assert.Equal(1, uzduotis.StatusId);
+
+        repoMock.Verify(r => r.UpdateAsync(uzduotis), Times.Once);
+        repoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
     }
 }

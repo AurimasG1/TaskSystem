@@ -45,15 +45,14 @@ public class UserUzduotisController : ControllerBase
     {
         int userId = GetUserId();
 
-        var entity = await _service.GetEntityByIdAsync(id);
+        var entity = await _service.GetByIdAsync(id);
         if (entity == null)
-            return NotFound();
+            return NotFound("No task");
 
         if (entity.UserId != userId)
-            return Forbid();
+            return Forbid("Not your task");
 
-        var dto = await _service.GetByIdAsync(id);
-        return Ok(dto);
+        return Ok(entity);
     }
 
     [HttpPut("{id:int}")]
@@ -61,7 +60,7 @@ public class UserUzduotisController : ControllerBase
     {
         int userId = GetUserId();
 
-        var entity = await _service.GetEntityByIdAsync(id);
+        var entity = await _service.GetByIdAsync(id);
         if (entity == null || entity.UserId != userId)
             return Forbid();
 
@@ -74,7 +73,7 @@ public class UserUzduotisController : ControllerBase
     {
         int userId = GetUserId();
 
-        var entity = await _service.GetEntityByIdAsync(id);
+        var entity = await _service.GetByIdAsync(id);
         if (entity == null || entity.UserId != userId)
             return Forbid();
 
