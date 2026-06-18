@@ -1,0 +1,12 @@
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\bin\Debug\net10.0\TaskSystem.Common.deps.json
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\bin\Debug\net10.0\TaskSystem.Common.dll
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\bin\Debug\net10.0\TaskSystem.Common.pdb
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\obj\Debug\net10.0\TaskSystem.Common.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\obj\Debug\net10.0\TaskSystem.Common.AssemblyInfoInputs.cache
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\obj\Debug\net10.0\TaskSystem.Common.AssemblyInfo.cs
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\obj\Debug\net10.0\TaskSystem.Common.csproj.CoreCompileInputs.cache
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\obj\Debug\net10.0\TaskSystem.Common.sourcelink.json
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\obj\Debug\net10.0\TaskSystem.Common.dll
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\obj\Debug\net10.0\refint\TaskSystem.Common.dll
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\obj\Debug\net10.0\TaskSystem.Common.pdb
+C:\Users\VHJP\Documents\Git\CSharp\TaskSystem\TaskSystem.Common\obj\Debug\net10.0\ref\TaskSystem.Common.dll
