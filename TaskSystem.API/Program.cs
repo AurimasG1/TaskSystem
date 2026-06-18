@@ -50,9 +50,17 @@ builder.Services.AddSwaggerGen(c =>
     );
 });
 
-// JWT Auth
+// ------------------------------------------------------------
+// JWT konfigūracija (saugiai iš User Secrets / Env Variables)
+// ------------------------------------------------------------
 var jwtKey = builder.Configuration["Jwt:Key"];
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+
+// Guard rails: jei JWT Key nerastas → stabdom programą
+if (string.IsNullOrWhiteSpace(jwtKey))
+    throw new Exception(
+        "JWT Key nerastas. Įsitikinkite, kad jis nustatytas User Secrets arba Environment Variables."
+    );
 
 builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -71,12 +79,18 @@ builder
 
 builder.Services.AddAuthorization();
 
-// DbContext (MySQL)
+// ------------------------------------------------------------
+// Duomenų bazė (MySQL) — connection string iš User Secrets / Env
+// ------------------------------------------------------------
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new Exception(
+        "Connection string nerastas. Nustatykite jį User Secrets arba Environment Variables."
+    );
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        new MySqlServerVersion(new Version(8, 0, 36))
-    )
+    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 36)))
 );
 
 // Dependency Injection

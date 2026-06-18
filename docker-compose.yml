@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  # -----------------------------------------
+  # MySQL duomenų bazė
+  # -----------------------------------------
+  mysql:
+    image: mysql:8
+    container_name: tasksystem-mysql
+    restart: always
+
+    # Environment Variables perduodami į MySQL konteinerį
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: tasksystem
+
+    # Atidarome MySQL portą
+    ports:
+      - "3306:3306"
+
+    # Duomenų išsaugojimui tarp paleidimų
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # -----------------------------------------
+  # TaskSystem API konteineris
+  # -----------------------------------------
+  api:
+    build: ./TaskSystem.API
+    container_name: tasksystem-api
+
+    # API paleidžiamas tik tada, kai MySQL jau veikia
+    depends_on:
+      - mysql
+
+    # Environment Variables perduodami į ASP.NET Core API
+    environment:
+      # Connection string nurodo MySQL konteinerio hostname: "mysql"
+      ConnectionStrings__DefaultConnection: "server=mysql;port=3306;database=tasksystem;user=root;password=root"
+
+      # JWT raktas (production aplinkoje būtų saugomas saugiau)
+      Jwt__Key: "SLAPTAS_RAKTAS"
+      Jwt__Issuer: "TaskSystemAPI"
+
+    # API portų atvaizdavimas
+    ports:
+      - "5001:8080"
+
+# -----------------------------------------
+# MySQL duomenų saugojimo volume
+# -----------------------------------------
+volumes:
+  mysql_data:
