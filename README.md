@@ -56,7 +56,8 @@ cd TaskSystem/TaskSystem.API/
 dotnet run
 ```
 
-API bus pasiekiamas
+API bus pasiekiamas per localhost su jusu nustatytu portu
+pvz
 
 ```
 https://localhost:5263/swagger
