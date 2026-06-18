@@ -1,37 +1,6 @@
 # 🚀 TaskSystem – Užduočių valdymo REST API
 
-# 🧰 Naudojamos technologijos ir versijos
-
-Projektas sukurtas naudojant:
-
-- **.NET SDK 10.0**  
-  (naudojamas kaip pagrindinis kompiliavimo ir paleidimo SDK)
-
-- **ASP.NET Core 9.0**  
-  (naujausia stabili ASP.NET Core versija, suderinama su .NET 10)
-
-- **Entity Framework Core 9.0**  
-  (naujausia stabili EF Core versija)
-
-- **Pomelo.EntityFrameworkCore.MySql 9.0.0**  
-  (suderinta su EF Core 9)
-
-- **Swashbuckle.AspNetCore 6.5.0**  
-  (Swagger generavimui)
-
-- **System.IdentityModel.Tokens.Jwt 8.19.1**  
-  (JWT generavimui ir validavimui)
-
-## Kodėl SDK 10, o paketai 9?
-
-.NET 10 SDK yra naujausias, tačiau ASP.NET Core ir EF Core 10 versijos dar nėra išleistos.  
-Todėl naudojamos **naujausios stabilios 9.x versijos**, kurios yra pilnai suderinamos su .NET 10.
-
-Tai yra standartinė praktika .NET ekosistemoje.
-
----
-
-# 🟦 1. Kaip paleisti projektą lokaliai
+## 🟦 1. Kaip paleisti projektą lokaliai
 
 ## 1.1. Klonuoti repozitoriją
 
@@ -178,3 +147,117 @@ secrets.json
 .env
 
 appsettings.Development.json
+
+## 🏗 Projekto architektūra
+
+Projektas sukurtas pagal **švarią sluoksninę architektūrą**, kuri užtikrina aiškų atsakomybės paskirstymą, lengvą testavimą ir gerą kodo palaikymą.
+
+### 🔹 1. API sluoksnis (`TaskSystem.API`)
+
+Atsakingas už:
+
+- HTTP užklausų priėmimą
+- REST endpoint’ų aprašymą
+- Modelių validaciją
+- Autentifikaciją ir autorizaciją (JWT)
+- Atsakymų formavimą
+
+Naudoja:
+
+- Controllerius (`AuthController`, `UserController`, `AdminController`)
+- `[ApiController]`, `[Authorize]`, `[AllowAnonymous]`
+
+---
+
+### 🔹 2. Servisų sluoksnis (`TaskSystem.Services`)
+
+Atsakingas už:
+
+- verslo logiką
+- validaciją
+- darbo su repository koordinavimą
+- papildomas taisykles (pvz., naudotojas gali valdyti tik savo užduotis)
+
+Pavyzdžiai:
+
+- `UserService`
+- `UzduotisService`
+- `JwtService`
+
+---
+
+### 🔹 3. Repository sluoksnis (`TaskSystem.Repositories`)
+
+Atsakingas už:
+
+- duomenų prieigą
+- CRUD operacijas
+- EF Core užklausas
+
+Pavyzdžiai:
+
+- `UserRepository`
+- `UzduotisRepository`
+
+Repository naudoja:
+
+- `AppDbContext`
+- EF Core 9
+- Pomelo MySQL provider
+
+---
+
+### 🔹 4. Duomenų sluoksnis (`TaskSystem.Data`)
+
+Atsakingas už:
+
+- duomenų bazės kontekstą (`AppDbContext`)
+- DbSet’ų aprašymą
+- MySQL konfigūraciją
+
+---
+
+### 🔹 5. Bendri modeliai (`TaskSystem.Common`)
+
+Atsakingi už:
+
+- DTO modelius
+- Entity modelius
+- Enum’us
+- Validacijos atributus
+
+---
+
+### 📌 Architektūros principai
+
+- **Dependency Injection** naudojamas visur (services, repositories)
+- **Controlleriai neturi verslo logikos**
+- **Service sluoksnis neturi tiesioginės prieigos prie DB**
+- **Repository neturi verslo logikos**
+- **DTO atskirti nuo Entity**
+- **JWT autentifikacija ir rolėmis paremta autorizacija**
+- **User Secrets / Environment Variables** naudojami konfigūracijai
+
+Tokiu būdu projektas yra:
+
+- lengvai testuojamas
+- plečiamas
+- saugus
+- aiškiai struktūruotas
+
+## 🔐 Autentifikacija ir autorizacija
+
+Projektas naudoja **JWT (JSON Web Token)** autentifikaciją ir rolėmis paremtą autorizaciją.
+
+---
+
+# 1. Autentifikacija (JWT)
+
+Autentifikacija vyksta per du endpoint’us:
+
+| Metodas | Endpoint             | Aprašymas                          |
+| ------- | -------------------- | ---------------------------------- |
+| POST    | `/api/auth/register` | Registracija                       |
+| POST    | `/api/auth/login`    | Prisijungimas (grąžina JWT tokeną) |
+
+Prisijungus, API grąžina JWT tokeną, kurį naudotojas turi pateikti `Authorization` header’yje:
