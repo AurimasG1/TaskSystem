@@ -5,7 +5,7 @@
 ## 1.1. Klonuoti repozitoriją
 
 ```bash
-git clone https://github.com/<tavo-repo>/TaskSystem.git
+git clone https://github.com/AurimasG1/TaskSystem.git
 cd TaskSystem/TaskSystem.API
 ```
 
