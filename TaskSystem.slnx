@@ -5,4 +5,5 @@
   <Project Path="TaskSystem.Entities/TaskSystem.Entities.csproj" />
   <Project Path="TaskSystem.Repositories/TaskSystem.Repositories.csproj" />
   <Project Path="TaskSystem.Services/TaskSystem.Services.csproj" />
+  <Project Path="TaskSystem.Tests/TaskSystem.Tests.csproj" />
 </Solution>

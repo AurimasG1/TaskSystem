@@ -37,6 +37,9 @@ public class UzduotisService : IUzduotisService
 
     public async Task<UzduotisResponseDto> CreateAsync(UzduotisRequestDto request, int userId)
     {
+        if (string.IsNullOrWhiteSpace(request.Title))
+            throw new ArgumentException("Title is required");
+
         var uzduotis = new Uzduotis
         {
             Title = request.Title,
@@ -57,6 +60,9 @@ public class UzduotisService : IUzduotisService
 
     public async Task<bool> UpdateAsync(int id, UzduotisUpdateRequestDto request, int userId)
     {
+        if (string.IsNullOrWhiteSpace(request.Title))
+            throw new ArgumentException("Title is required");
+
         var uzduotis = await _repo.GetByIdAsync(id);
         if (uzduotis == null || uzduotis.UserId != userId)
             return false;
