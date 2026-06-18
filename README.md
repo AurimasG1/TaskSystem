@@ -1,7 +1,33 @@
 # 🚀 TaskSystem – Užduočių valdymo REST API
 
-TaskSystem yra ASP.NET Core 8 REST API projektas, skirtas užduočių kūrimui, peržiūrai, atnaujinimui ir administravimui.  
-Sistema palaiko JWT autentifikaciją, rolėmis paremtą autorizaciją (user/admin), duomenų validaciją ir vienetinius testus.
+# 🧰 Naudojamos technologijos ir versijos
+
+Projektas sukurtas naudojant:
+
+- **.NET SDK 10.0**  
+  (naudojamas kaip pagrindinis kompiliavimo ir paleidimo SDK)
+
+- **ASP.NET Core 9.0**  
+  (naujausia stabili ASP.NET Core versija, suderinama su .NET 10)
+
+- **Entity Framework Core 9.0**  
+  (naujausia stabili EF Core versija)
+
+- **Pomelo.EntityFrameworkCore.MySql 9.0.0**  
+  (suderinta su EF Core 9)
+
+- **Swashbuckle.AspNetCore 6.5.0**  
+  (Swagger generavimui)
+
+- **System.IdentityModel.Tokens.Jwt 8.19.1**  
+  (JWT generavimui ir validavimui)
+
+## Kodėl SDK 10, o paketai 9?
+
+.NET 10 SDK yra naujausias, tačiau ASP.NET Core ir EF Core 10 versijos dar nėra išleistos.  
+Todėl naudojamos **naujausios stabilios 9.x versijos**, kurios yra pilnai suderinamos su .NET 10.
+
+Tai yra standartinė praktika .NET ekosistemoje.
 
 ---
 
