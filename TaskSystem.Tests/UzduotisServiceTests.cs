@@ -8,15 +8,11 @@ namespace TaskSystem.Tests;
 
 public class UzduotisServiceTests
 {
-    private UzduotisService CreateService(Mock<IUzduotisRepository> repoMock)
-    {
-        return new UzduotisService(repoMock.Object);
-    }
+    private UzduotisService CreateService(Mock<IUzduotisRepository> repoMock) =>
+        new UzduotisService(repoMock.Object);
 
     // ------------------------------------------------------------
-    // TESTAS 1:
-    // Tikrina, ar servisas teisingai grąžina paskutinę naudotojo
-    // užduotį, kai repository ją randa.
+    // GET LAST
     // ------------------------------------------------------------
     [Fact]
     public async Task GetLastByUserIdAsync_ReturnsDto_WhenUzduotisExists()
@@ -31,8 +27,8 @@ public class UzduotisServiceTests
             Id = 10,
             Title = "Test Task",
             Description = "Test Desc",
-            Status = new UzduotisStatus { Id = 1, Name = "New" },
             StatusId = 1,
+            Status = new UzduotisStatus { Id = 1, Name = "New" },
             UserId = userId,
             CreatedAt = DateTime.UtcNow.AddMinutes(-10),
             UpdatedAt = DateTime.UtcNow,
@@ -43,96 +39,152 @@ public class UzduotisServiceTests
         var result = await service.GetLastByUserIdAsync(userId);
 
         Assert.NotNull(result);
-        Assert.Equal(10, result!.Id);
+        Assert.Equal(10, result.Id);
         Assert.Equal("Test Task", result.Title);
         Assert.Equal("New", result.Status);
     }
 
     // ------------------------------------------------------------
-    // TESTAS 2:
-    // Tikrina, ar servisas meta ArgumentException, kai Title tuščias.
+    // CREATE — validacija vyksta validatoriuose, ne servise
     // ------------------------------------------------------------
     [Fact]
-    public async Task CreateAsync_ThrowsException_WhenTitleIsMissing()
+    public async Task CreateAsync_CreatesTask_AndReturnsDto()
     {
         var repoMock = new Mock<IUzduotisRepository>();
         var service = CreateService(repoMock);
 
         var request = new UzduotisRequestDto
         {
-            Title = "",
-            Description = "Test",
+            Title = "New Task",
+            Description = "Desc",
             StatusId = 1,
         };
 
-        await Assert.ThrowsAsync<ArgumentException>(() => service.CreateAsync(request, userId: 1));
+        var savedEntity = new Uzduotis
+        {
+            Id = 1,
+            Title = request.Title,
+            Description = request.Description,
+            StatusId = request.StatusId,
+            Status = new UzduotisStatus { Id = 1, Name = "New" },
+            UserId = 5,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        // 🔥 svarbiausia vieta — nustatome Id
+        repoMock.Setup(r => r.AddAsync(It.IsAny<Uzduotis>())).Callback<Uzduotis>(u => u.Id = 1);
+
+        repoMock.Setup(r => r.SaveChangesAsync());
+        repoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(savedEntity);
+
+        var result = await service.CreateAsync(request, 5);
+
+        Assert.NotNull(result);
+        Assert.Equal("New Task", result.Title);
+        Assert.Equal("New", result.Status);
+
+        repoMock.Verify(r => r.AddAsync(It.IsAny<Uzduotis>()), Times.Once);
+        repoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
     }
 
     // ------------------------------------------------------------
-    // TESTAS 3:
-    // Tikrina, ar servisas atnaujina UpdatedAt lauką.
+    // UPDATE
     // ------------------------------------------------------------
     [Fact]
-    public async Task UpdateAsync_UpdatesUpdatedAt_WhenUzduotisIsModified()
+    public async Task UpdateAsync_UpdatesEntity_AndReturnsUpdatedDto()
     {
         var repoMock = new Mock<IUzduotisRepository>();
         var service = CreateService(repoMock);
 
-        var uzduotis = new Uzduotis
-        {
-            Id = 1,
-            Title = "Old Title",
-            Description = "Old",
-            StatusId = 1,
-            UserId = 1,
-            CreatedAt = DateTime.UtcNow.AddMinutes(-20),
-            UpdatedAt = DateTime.UtcNow.AddMinutes(-20),
-        };
-
-        repoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(uzduotis);
-
-        var request = new UzduotisUpdateRequestDto
-        {
-            Title = "New Title",
-            Description = "Updated",
-            StatusId = 1,
-        };
-
-        await service.UpdateAsync(1, request, userId: 1);
-
-        Assert.True(uzduotis.UpdatedAt > uzduotis.CreatedAt);
-    }
-
-    // ------------------------------------------------------------
-    // TESTAS 4:
-    // Tikrina, ar servisas iškviečia repository metodą ResetLastUzduotisAsync.
-    // ------------------------------------------------------------
-    [Fact]
-    public async Task ResetLastUzduotisAsync_UpdatesEntityAndSaves()
-    {
-        var repoMock = new Mock<IUzduotisRepository>();
-        var service = new UzduotisService(repoMock.Object);
-
-        var uzduotis = new Uzduotis
+        var original = new Uzduotis
         {
             Id = 1,
             Title = "Old",
-            Description = "Old desc",
-            StatusId = 5,
+            Description = "Old Desc",
+            StatusId = 1,
             UserId = 1,
-            UpdatedAt = DateTime.UtcNow.AddMinutes(-10),
+            CreatedAt = DateTime.UtcNow.AddMinutes(-30),
+            UpdatedAt = DateTime.UtcNow.AddMinutes(-30),
         };
 
-        repoMock.Setup(r => r.GetLastByUserIdAsync(1)).ReturnsAsync(uzduotis);
+        var updatedEntity = new Uzduotis
+        {
+            Id = 1,
+            Title = "New",
+            Description = "Updated",
+            StatusId = 2,
+            Status = new UzduotisStatus { Id = 2, Name = "In Progress" },
+            UserId = 1,
+            CreatedAt = original.CreatedAt,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        repoMock.Setup(r => r.GetByIdForUpdateAsync(1)).ReturnsAsync(original);
+        repoMock.Setup(r => r.UpdateAsync(original));
+        repoMock.Setup(r => r.SaveChangesAsync());
+        repoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(updatedEntity);
+
+        var request = new UzduotisUpdateRequestDto
+        {
+            Title = "New",
+            Description = "Updated",
+            StatusId = 2,
+        };
+
+        var result = await service.UpdateAsync(1, request, 1);
+
+        Assert.NotNull(result);
+        Assert.Equal("New", result.Title);
+        Assert.Equal("In Progress", result.Status);
+
+        repoMock.Verify(r => r.UpdateAsync(original), Times.Once);
+        repoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
+    }
+
+    // ------------------------------------------------------------
+    // RESET LAST
+    // ------------------------------------------------------------
+    [Fact]
+    public async Task ResetLastUzduotisAsync_ResetsFields_AndReturnsUpdatedDto()
+    {
+        var repoMock = new Mock<IUzduotisRepository>();
+        var service = CreateService(repoMock);
+
+        var original = new Uzduotis
+        {
+            Id = 1,
+            Title = "Old",
+            Description = "Old Desc",
+            StatusId = 5,
+            Status = new UzduotisStatus { Id = 5, Name = "OldStatus" },
+            UserId = 1,
+            UpdatedAt = DateTime.UtcNow.AddMinutes(-20),
+        };
+
+        var updatedEntity = new Uzduotis
+        {
+            Id = 1,
+            Title = "(reset) Old",
+            Description = null,
+            StatusId = 1,
+            Status = new UzduotisStatus { Id = 1, Name = "New" },
+            UserId = 1,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        repoMock.Setup(r => r.GetLastByUserIdAsync(1)).ReturnsAsync(original);
+        repoMock.Setup(r => r.UpdateAsync(original));
+        repoMock.Setup(r => r.SaveChangesAsync());
+        repoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(updatedEntity);
 
         var result = await service.ResetLastUzduotisAsync(1);
 
-        Assert.True(result);
-        Assert.Equal("(reset) Old", uzduotis.Title);
-        Assert.Null(uzduotis.Description);
-        Assert.Equal(1, uzduotis.StatusId);
+        Assert.NotNull(result);
+        Assert.Equal("(reset) Old", result.Title);
+        Assert.Equal("New", result.Status);
 
-        repoMock.Verify(r => r.UpdateAsync(uzduotis), Times.Once);
+        repoMock.Verify(r => r.UpdateAsync(original), Times.Once);
         repoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
     }
 }

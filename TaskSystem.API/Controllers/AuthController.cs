@@ -23,28 +23,17 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var ok = await _users.RegisterAsync(req.Email, req.Password, req.Role);
-        if (!ok)
-            return BadRequest("User already exists");
-
-        return Ok("Registered");
+        var user = await _users.RegisterAsync(req.Email, req.Password, req.Role);
+        return Ok(new { message = "Registered", userId = user.Id });
     }
 
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         var user = await _users.LoginAsync(req.Email, req.Password);
-        if (user == null)
-            return Unauthorized("Invalid credentials");
+        var token = _jwt.GenerateToken(user!.Id, user.Email, user.Role);
 
-        var token = _jwt.GenerateToken(user.Id, user.Email, user.Role);
         return Ok(new { token });
     }
 }

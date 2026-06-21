@@ -22,8 +22,9 @@ public class UzduotisService : IUzduotisService
 
     public async Task<UzduotisResponseDto?> GetByIdAsync(int id)
     {
-        var item = await _repo.GetByIdAsync(id);
-        return item == null ? null : ToDto(item);
+        var item = await _repo.GetByIdAsync(id) ?? throw new KeyNotFoundException("Task not found");
+
+        return ToDto(item);
     }
 
     public async Task<List<UzduotisResponseDto>> GetByUserIdAsync(int userId)
@@ -40,8 +41,11 @@ public class UzduotisService : IUzduotisService
 
     public async Task<UzduotisResponseDto?> GetLastByUserIdAsync(int userId)
     {
-        var item = await _repo.GetLastByUserIdAsync(userId);
-        return item == null ? null : ToDto(item);
+        var item =
+            await _repo.GetLastByUserIdAsync(userId)
+            ?? throw new KeyNotFoundException("User has no tasks");
+
+        return ToDto(item);
     }
 
     public async Task<List<UzduotisResponseDto>> GetTopAsync(int count)
@@ -52,9 +56,6 @@ public class UzduotisService : IUzduotisService
 
     public async Task<UzduotisResponseDto> CreateAsync(UzduotisRequestDto request, int userId)
     {
-        if (string.IsNullOrWhiteSpace(request.Title))
-            throw new ArgumentException("Title is required");
-
         var uzduotis = new Uzduotis
         {
             Title = request.Title,
@@ -67,20 +68,26 @@ public class UzduotisService : IUzduotisService
 
         await _repo.AddAsync(uzduotis);
         await _repo.SaveChangesAsync();
+
         var loaded =
             await _repo.GetByIdAsync(uzduotis.Id)
-            ?? throw new InvalidOperationException("Uzduotis not found after creation");
+            ?? throw new InvalidOperationException("Task not found after creation");
+
         return ToDto(loaded);
     }
 
-    public async Task<bool> UpdateAsync(int id, UzduotisUpdateRequestDto request, int userId)
+    public async Task<UzduotisResponseDto> UpdateAsync(
+        int id,
+        UzduotisUpdateRequestDto request,
+        int userId
+    )
     {
-        if (string.IsNullOrWhiteSpace(request.Title))
-            throw new ArgumentException("Title is required");
+        var uzduotis =
+            await _repo.GetByIdForUpdateAsync(id)
+            ?? throw new KeyNotFoundException("Task not found");
 
-        var uzduotis = await _repo.GetByIdAsync(id);
-        if (uzduotis == null || uzduotis.UserId != userId)
-            return false;
+        if (uzduotis.UserId != userId)
+            throw new UnauthorizedAccessException("You cannot edit this task.");
 
         uzduotis.Title = request.Title;
         uzduotis.Description = request.Description;
@@ -90,26 +97,26 @@ public class UzduotisService : IUzduotisService
         await _repo.UpdateAsync(uzduotis);
         await _repo.SaveChangesAsync();
 
-        return true;
+        var updated =
+            await _repo.GetByIdAsync(id)
+            ?? throw new InvalidOperationException("Task not found after update");
+        return ToDto(updated!);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task DeleteAsync(int id)
     {
-        var uzduotis = await _repo.GetByIdAsync(id);
-        if (uzduotis == null)
-            return false;
+        var uzduotis =
+            await _repo.GetByIdAsync(id) ?? throw new KeyNotFoundException("Task not found");
 
         await _repo.DeleteAsync(uzduotis);
         await _repo.SaveChangesAsync();
-
-        return true;
     }
 
-    public async Task<bool> ResetLastUzduotisAsync(int userId)
+    public async Task<UzduotisResponseDto> ResetLastUzduotisAsync(int userId)
     {
-        var uzduotis = await _repo.GetLastByUserIdAsync(userId);
-        if (uzduotis == null)
-            return false;
+        var uzduotis =
+            await _repo.GetLastByUserIdAsync(userId)
+            ?? throw new KeyNotFoundException("User has no tasks");
 
         uzduotis.Title = "(reset) " + uzduotis.Title;
         uzduotis.Description = null;
@@ -119,7 +126,11 @@ public class UzduotisService : IUzduotisService
         await _repo.UpdateAsync(uzduotis);
         await _repo.SaveChangesAsync();
 
-        return true;
+        var updated =
+            await _repo.GetByIdAsync(uzduotis.Id)
+            ?? throw new InvalidOperationException("Task not found after reset");
+
+        return ToDto(updated);
     }
 
     private static UzduotisResponseDto ToDto(Uzduotis u) =>

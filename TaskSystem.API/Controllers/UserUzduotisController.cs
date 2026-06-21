@@ -35,59 +35,42 @@ public class UserUzduotisController : ControllerBase
         int userId = GetUserId();
         var items = await _service.GetByUserIdAsync(userId);
 
-        // galima naudoti .Any vietoj count
-        return items.Count == 0 ? NotFound("You have no tasks") : Ok(items);
+        return Ok(items);
     }
 
-    // 3. Peržiūrėti konkretų filmą
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
         int userId = GetUserId();
+        var item = await _service.GetByIdAsync(id);
 
-        var entity = await _service.GetByIdAsync(id);
-        if (entity == null)
-            return NotFound("No task");
+        if (item?.UserId != userId)
+            throw new UnauthorizedAccessException("Not your task");
 
-        if (entity.UserId != userId)
-            return Forbid("Not your task");
-
-        return Ok(entity);
+        return Ok(item);
     }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UzduotisUpdateRequestDto request)
     {
         int userId = GetUserId();
-
-        var entity = await _service.GetByIdAsync(id);
-        if (entity == null || entity.UserId != userId)
-            return Forbid();
-
-        var success = await _service.UpdateAsync(id, request, userId);
-        return success ? NoContent() : NotFound();
+        var updated = await _service.UpdateAsync(id, request, userId);
+        return Ok(updated);
     }
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
         int userId = GetUserId();
-
-        var entity = await _service.GetByIdAsync(id);
-        if (entity == null || entity.UserId != userId)
-            return Forbid();
-
-        var success = await _service.DeleteAsync(id);
-        return success ? NoContent() : NotFound();
+        await _service.DeleteAsync(id);
+        return NoContent();
     }
 
-    // 6. Paskutinis naudotojo filmas
     [HttpGet("last")]
     public async Task<IActionResult> GetLast()
     {
         int userId = GetUserId();
         var item = await _service.GetLastByUserIdAsync(userId);
-
-        return item == null ? NotFound("You have no tasks") : Ok(item);
+        return Ok(item);
     }
 }

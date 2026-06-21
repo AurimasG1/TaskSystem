@@ -17,22 +17,22 @@ public class UserService : IUserService
 
     public async Task<User?> LoginAsync(string email, string password)
     {
-        var user = await _repo.GetByEmailAsync(email);
-        if (user == null)
-            return null;
+        var user =
+            await _repo.GetByEmailAsync(email)
+            ?? throw new UnauthorizedAccessException("Invalid email or password");
 
         var hash = HashPassword(password);
         if (hash != user.PasswordHash)
-            return null;
+            throw new UnauthorizedAccessException("Invalid email or password");
 
         return user;
     }
 
-    public async Task<bool> RegisterAsync(string email, string password, string role)
+    public async Task<User> RegisterAsync(string email, string password, string role)
     {
         var existing = await _repo.GetByEmailAsync(email);
         if (existing != null)
-            return false;
+            throw new InvalidOperationException("Email already registered");
 
         var user = new User
         {
@@ -42,7 +42,8 @@ public class UserService : IUserService
         };
 
         await _repo.AddAsync(user);
-        return true;
+        await _repo.SaveChangesAsync();
+        return user;
     }
 
     private string HashPassword(string password)

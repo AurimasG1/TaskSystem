@@ -5,6 +5,6 @@ namespace TaskSystem.Services.Interface
     public interface IUserService
     {
         Task<User?> LoginAsync(string email, string password);
-        Task<bool> RegisterAsync(string email, string password, string role = "user");
+        Task<User> RegisterAsync(string email, string password, string role = "user");
     }
 }

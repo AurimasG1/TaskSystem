@@ -12,7 +12,7 @@ public interface IUzduotisService
     Task<UzduotisResponseDto?> GetLastByUserIdAsync(int userId);
     Task<List<UzduotisResponseDto>> GetTopAsync(int count);
     Task<UzduotisResponseDto> CreateAsync(UzduotisRequestDto request, int userId);
-    Task<bool> UpdateAsync(int id, UzduotisUpdateRequestDto request, int userId);
-    Task<bool> DeleteAsync(int id);
-    Task<bool> ResetLastUzduotisAsync(int userId);
+    Task<UzduotisResponseDto> UpdateAsync(int id, UzduotisUpdateRequestDto request, int userId);
+    Task DeleteAsync(int id);
+    Task<UzduotisResponseDto> ResetLastUzduotisAsync(int userId);
 }

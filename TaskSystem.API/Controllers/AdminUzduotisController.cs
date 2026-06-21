@@ -27,39 +27,34 @@ public class AdminUzduotisController : ControllerBase
     public async Task<IActionResult> GetByUserId(int userId)
     {
         var items = await _service.GetByUserIdAsync(userId);
-
-        return items.Count == 0 ? NotFound($"No tasks found for user {userId}") : Ok(items);
+        return Ok(items);
     }
 
     [HttpGet("by-user-email/{email}")]
     public async Task<IActionResult> GetByUserEmail(string email)
     {
         var items = await _service.GetByUserEmailAsync(email);
-
-        return items.Count == 0 ? NotFound($"No tasks found for email {email}") : Ok(items);
+        return Ok(items);
     }
 
     [HttpGet("last/by-user/{userId:int}")]
     public async Task<IActionResult> GetLastByUser(int userId)
     {
         var item = await _service.GetLastByUserIdAsync(userId);
-
-        return item == null ? NotFound($"User {userId} has no tasks") : Ok(item);
+        return Ok(item);
     }
 
     [HttpPut("last/reset/{userId:int}")]
     public async Task<IActionResult> ResetLastUzduotis(int userId)
     {
-        var success = await _service.ResetLastUzduotisAsync(userId);
-
-        return success ? NoContent() : NotFound($"User {userId} has no tasks to reset");
+        var updated = await _service.ResetLastUzduotisAsync(userId);
+        return Ok(updated);
     }
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var success = await _service.DeleteAsync(id);
-
-        return success ? NoContent() : NotFound($"Task {id} not found");
+        await _service.DeleteAsync(id);
+        return NoContent();
     }
 }

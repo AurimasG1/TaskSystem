@@ -1,7 +1,11 @@
 using System.Text;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using TaskSystem.API.Middleware;
+using TaskSystem.API.Validators;
 using TaskSystem.Data;
 using TaskSystem.Repositories.Implementation;
 using TaskSystem.Repositories.Interface;
@@ -93,6 +97,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 36)))
 );
 
+builder.Services.AddValidatorsFromAssemblyContaining<UzduotisRequestDtoValidator>();
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddFluentValidationClientsideAdapters();
+
 // Dependency Injection
 builder.Services.AddScoped<JwtService>();
 
@@ -112,6 +120,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
