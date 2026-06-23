@@ -1,9 +1,7 @@
 <Solution>
   <Project Path="TaskSystem.API/TaskSystem.API.csproj" />
-  <Project Path="TaskSystem.Common/TaskSystem.Common.csproj" />
-  <Project Path="TaskSystem.Data/TaskSystem.Data.csproj" />
-  <Project Path="TaskSystem.Entities/TaskSystem.Entities.csproj" />
-  <Project Path="TaskSystem.Repositories/TaskSystem.Repositories.csproj" />
-  <Project Path="TaskSystem.Services/TaskSystem.Services.csproj" />
+  <Project Path="TaskSystem.Application/TaskSystem.Application.csproj" />
+  <Project Path="TaskSystem.Infrastructure/TaskSystem.Infrastructure.csproj" />
   <Project Path="TaskSystem.Tests/TaskSystem.Tests.csproj" />
+  <Project Path="TaskSystem.Domain/TaskSystem.Domain.csproj" />
 </Solution>

@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TaskSystem.Common\TaskSystem.Common.csproj" />
-    <ProjectReference Include="..\TaskSystem.Services\TaskSystem.Services.csproj" />
+    <ProjectReference Include="..\TaskSystem.Application\TaskSystem.Application.csproj" />
+    <ProjectReference Include="..\TaskSystem.Infrastructure\TaskSystem.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

@@ -16,14 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TaskSystem.Common\TaskSystem.Common.csproj" />
-    <ProjectReference Include="..\TaskSystem.Data\TaskSystem.Data.csproj" />
-    <ProjectReference Include="..\TaskSystem.Entities\TaskSystem.Entities.csproj" />
-    <ProjectReference Include="..\TaskSystem.Repositories\TaskSystem.Repositories.csproj" />
-    <ProjectReference Include="..\TaskSystem.Services\TaskSystem.Services.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 </Project>

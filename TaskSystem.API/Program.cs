@@ -5,12 +5,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using TaskSystem.API.Middleware;
-using TaskSystem.API.Validators;
-using TaskSystem.Data;
-using TaskSystem.Repositories.Implementation;
-using TaskSystem.Repositories.Interface;
-using TaskSystem.Services.Implementation;
-using TaskSystem.Services.Interface;
+using TaskSystem.Application.DependencyInjection;
+using TaskSystem.Application.Validators;
+using TaskSystem.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,32 +80,12 @@ builder
 
 builder.Services.AddAuthorization();
 
-// ------------------------------------------------------------
-// Duomenų bazė (MySQL) — connection string iš User Secrets / Env
-// ------------------------------------------------------------
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-if (string.IsNullOrWhiteSpace(connectionString))
-    throw new Exception(
-        "Connection string nerastas. Nustatykite jį User Secrets arba Environment Variables."
-    );
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 36)))
-);
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("DefaultConnection"));
 
 builder.Services.AddValidatorsFromAssemblyContaining<UzduotisRequestDtoValidator>();
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
-
-// Dependency Injection
-builder.Services.AddScoped<JwtService>();
-
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IUserService, UserService>();
-
-builder.Services.AddScoped<IUzduotisRepository, UzduotisRepository>();
-builder.Services.AddScoped<IUzduotisService, UzduotisService>();
 
 var app = builder.Build();
 
@@ -125,6 +102,8 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHealthChecks("/health");
 
 app.MapControllers();
 
