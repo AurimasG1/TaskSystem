@@ -1,6 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskSystem.Services.Interface;
+using TaskSystem.Application.Commands.Uzduotys.DeleteUzduotis;
+using TaskSystem.Application.Commands.Uzduotys.ResetLastUzduotis;
+using TaskSystem.Application.Queries.Uzduotys.GetAllUzduotys;
+using TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserId;
+using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserEmail;
+using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserId;
 
 namespace TaskSystem.API.Controllers;
 
@@ -9,52 +14,57 @@ namespace TaskSystem.API.Controllers;
 [Route("api/admin/uzduotys")]
 public class AdminUzduotisController : ControllerBase
 {
-    private readonly IUzduotisService _service;
+    private readonly GetAllUzduotysHandler _getAll;
+    private readonly GetUzduotysByUserIdHandler _getByUserId;
+    private readonly GetUzduotysByUserEmailHandler _getByEmail;
+    private readonly GetLastUzduotisByUserIdHandler _getLast;
+    private readonly ResetLastUzduotisHandler _reset;
+    private readonly DeleteUzduotisHandler _delete;
+    private readonly AdminDeleteUzduotisHandler _adminDelete;
 
-    public AdminUzduotisController(IUzduotisService service)
+    public AdminUzduotisController(
+        GetAllUzduotysHandler getAll,
+        GetUzduotysByUserIdHandler getByUserId,
+        GetUzduotysByUserEmailHandler getByEmail,
+        GetLastUzduotisByUserIdHandler getLast,
+        ResetLastUzduotisHandler reset,
+        DeleteUzduotisHandler delete,
+        AdminDeleteUzduotisHandler adminDelete
+    )
     {
-        _service = service;
+        _getAll = getAll;
+        _getByUserId = getByUserId;
+        _getByEmail = getByEmail;
+        _getLast = getLast;
+        _reset = reset;
+        _delete = delete;
+        _adminDelete = adminDelete;
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var items = await _service.GetAllAsync();
-        return Ok(items);
-    }
+    public async Task<IActionResult> GetAll() =>
+        Ok(await _getAll.Handle(new GetAllUzduotysQuery()));
 
-    [HttpGet("by-user/{userId:int}")]
-    public async Task<IActionResult> GetByUserId(int userId)
-    {
-        var items = await _service.GetByUserIdAsync(userId);
-        return Ok(items);
-    }
+    [HttpGet("user/{userId:int}")]
+    public async Task<IActionResult> GetByUserId(int userId) =>
+        Ok(await _getByUserId.Handle(new GetUzduotysByUserIdQuery(userId)));
 
-    [HttpGet("by-user-email/{email}")]
-    public async Task<IActionResult> GetByUserEmail(string email)
-    {
-        var items = await _service.GetByUserEmailAsync(email);
-        return Ok(items);
-    }
+    [HttpGet("email/{email}")]
+    public async Task<IActionResult> GetByEmail(string email) =>
+        Ok(await _getByEmail.Handle(new GetUzduotysByUserEmailQuery(email)));
 
-    [HttpGet("last/by-user/{userId:int}")]
-    public async Task<IActionResult> GetLastByUser(int userId)
-    {
-        var item = await _service.GetLastByUserIdAsync(userId);
-        return Ok(item);
-    }
+    [HttpGet("last/{userId:int}")]
+    public async Task<IActionResult> GetLast(int userId) =>
+        Ok(await _getLast.Handle(new GetLastUzduotisByUserIdQuery(userId)));
 
-    [HttpPut("last/reset/{userId:int}")]
-    public async Task<IActionResult> ResetLastUzduotis(int userId)
-    {
-        var updated = await _service.ResetLastUzduotisAsync(userId);
-        return Ok(updated);
-    }
+    [HttpPost("reset-last/{userId:int}")]
+    public async Task<IActionResult> ResetLast(int userId) =>
+        Ok(await _reset.Handle(new ResetLastUzduotisCommand(userId)));
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        await _service.DeleteAsync(id);
+        await _adminDelete.Handle(new AdminDeleteUzduotisCommand(id));
         return NoContent();
     }
 }

@@ -12,13 +12,5 @@ namespace TaskSystem.Domain.Entities
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-
-        public void Reset()
-        {
-            Title = "(reset) " + Title;
-            Description = null;
-            StatusId = 1;
-            UpdatedAt = DateTime.UtcNow;
-        }
     }
 }

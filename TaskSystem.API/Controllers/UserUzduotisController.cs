@@ -1,9 +1,13 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskSystem.Common.DTO;
-using TaskSystem.Entities;
-using TaskSystem.Services.Interface;
+using TaskSystem.Application.Commands.Uzduotys.CreateUzduotis;
+using TaskSystem.Application.Commands.Uzduotys.DeleteUzduotis;
+using TaskSystem.Application.Commands.Uzduotys.UpdateUzduotis;
+using TaskSystem.Application.DTO.Uzduotys;
+using TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserId;
+using TaskSystem.Application.Queries.Uzduotys.GetUzduotisById;
+using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserId;
 
 namespace TaskSystem.API.Controllers;
 
@@ -12,65 +16,74 @@ namespace TaskSystem.API.Controllers;
 [Route("api/user/uzduotys")]
 public class UserUzduotisController : ControllerBase
 {
-    private readonly IUzduotisService _service;
+    private readonly CreateUzduotisHandler _create;
+    private readonly UpdateUzduotisHandler _update;
+    private readonly DeleteUzduotisHandler _delete;
+    private readonly GetUzduotisByIdHandler _getById;
+    private readonly GetUzduotysByUserIdHandler _getByUserId;
+    private readonly GetLastUzduotisByUserIdHandler _getLast;
 
-    public UserUzduotisController(IUzduotisService service)
+    public UserUzduotisController(
+        CreateUzduotisHandler create,
+        UpdateUzduotisHandler update,
+        DeleteUzduotisHandler delete,
+        GetUzduotisByIdHandler getById,
+        GetUzduotysByUserIdHandler getByUserId,
+        GetLastUzduotisByUserIdHandler getLast
+    )
     {
-        _service = service;
+        _create = create;
+        _update = update;
+        _delete = delete;
+        _getById = getById;
+        _getByUserId = getByUserId;
+        _getLast = getLast;
     }
 
-    private int GetUserId() => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    private int UserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] UzduotisRequestDto request)
+    public async Task<IActionResult> Create([FromBody] UzduotisRequestDto dto)
     {
-        int userId = GetUserId();
-        var created = await _service.CreateAsync(request, userId);
+        var command = new CreateUzduotisCommand(dto.Title, dto.Description, UserId);
+        var created = await _create.Handle(command);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpGet("my")]
-    public async Task<IActionResult> GetMyUzduotys()
-    {
-        int userId = GetUserId();
-        var items = await _service.GetByUserIdAsync(userId);
-
-        return Ok(items);
-    }
+    public async Task<IActionResult> GetMy() =>
+        Ok(await _getByUserId.Handle(new GetUzduotysByUserIdQuery(UserId)));
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
-        int userId = GetUserId();
-        var item = await _service.GetByIdAsync(id);
-
-        if (item?.UserId != userId)
-            throw new UnauthorizedAccessException("Not your task");
-
+        var item = await _getById.Handle(new GetUzduotisByIdQuery(id));
+        if (item.UserId != UserId)
+            return Forbid();
         return Ok(item);
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UzduotisUpdateRequestDto request)
+    public async Task<IActionResult> Update(int id, [FromBody] UzduotisUpdateRequestDto dto)
     {
-        int userId = GetUserId();
-        var updated = await _service.UpdateAsync(id, request, userId);
-        return Ok(updated);
+        var command = new UpdateUzduotisCommand(
+            id,
+            dto.Title,
+            dto.Description,
+            dto.StatusId,
+            UserId
+        );
+        return Ok(await _update.Handle(command));
     }
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        int userId = GetUserId();
-        await _service.DeleteAsync(id);
+        await _delete.Handle(new DeleteUzduotisCommand(id, UserId));
         return NoContent();
     }
 
     [HttpGet("last")]
-    public async Task<IActionResult> GetLast()
-    {
-        int userId = GetUserId();
-        var item = await _service.GetLastByUserIdAsync(userId);
-        return Ok(item);
-    }
+    public async Task<IActionResult> GetLast() =>
+        Ok(await _getLast.Handle(new GetLastUzduotisByUserIdQuery(UserId)));
 }

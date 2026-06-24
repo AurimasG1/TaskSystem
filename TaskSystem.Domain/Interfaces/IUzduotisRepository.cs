@@ -11,8 +11,4 @@ public interface IUzduotisRepository
     Task<List<Uzduotis>> GetByUserEmailAsync(string email);
     Task<Uzduotis?> GetLastByUserIdAsync(int userId);
     Task<List<Uzduotis>> GetTopAsync(int count);
-    Task AddAsync(Uzduotis entity);
-    Task UpdateAsync(Uzduotis entity);
-    Task DeleteAsync(Uzduotis entity);
-    Task SaveChangesAsync();
 }

@@ -1,5 +1,8 @@
 using System.Net;
 using System.Text.Json;
+using FluentValidation;
+using Microsoft.EntityFrameworkCore;
+using TaskSystem.Domain.Exceptions;
 
 namespace TaskSystem.API.Middleware;
 
@@ -26,23 +29,43 @@ public class ExceptionHandlingMiddleware
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception occurred");
-
             await HandleExceptionAsync(context, ex);
         }
     }
 
     private static Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
-        var statusCode = ex switch
+        HttpStatusCode statusCode = ex switch
         {
-            ArgumentException => HttpStatusCode.BadRequest,
-            InvalidOperationException => HttpStatusCode.BadRequest,
-            KeyNotFoundException => HttpStatusCode.NotFound,
+            // Domain exceptions
+            UserAlreadyExistsException => HttpStatusCode.BadRequest,
+            InvalidCredentialsException => HttpStatusCode.BadRequest,
+            UserNotFoundException => HttpStatusCode.NotFound,
+            UzduotisNotFoundException => HttpStatusCode.NotFound,
+
+            // Validation
+            ValidationException => HttpStatusCode.BadRequest,
+
+            // EF Core
+            DbUpdateException => HttpStatusCode.Conflict,
+
+            // Auth
             UnauthorizedAccessException => HttpStatusCode.Unauthorized,
+            ForbiddenAccessException => HttpStatusCode.Forbidden,
+
+            // JSON / Model binding
+            JsonException => HttpStatusCode.BadRequest,
+
+            // Default
             _ => HttpStatusCode.InternalServerError,
         };
 
-        var response = new { error = ex.Message, status = (int)statusCode };
+        var response = new
+        {
+            success = false,
+            error = ex.Message,
+            status = (int)statusCode,
+        };
 
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;

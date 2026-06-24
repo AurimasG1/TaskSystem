@@ -2,12 +2,32 @@ using System.Text;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using TaskSystem.API.Middleware;
-using TaskSystem.Application.DependencyInjection;
-using TaskSystem.Application.Validators;
-using TaskSystem.Infrastructure.DependencyInjection;
+using TaskSystem.Application.Commands.Users.ChangePassword;
+using TaskSystem.Application.Commands.Users.DeleteUser;
+using TaskSystem.Application.Commands.Users.LoginUser;
+using TaskSystem.Application.Commands.Users.RegisterUser;
+using TaskSystem.Application.Commands.Users.UpdateUser;
+using TaskSystem.Application.Commands.Uzduotys.CreateUzduotis;
+using TaskSystem.Application.Commands.Uzduotys.DeleteUzduotis;
+using TaskSystem.Application.Commands.Uzduotys.ResetLastUzduotis;
+using TaskSystem.Application.Commands.Uzduotys.UpdateUzduotis;
+using TaskSystem.Application.Queries.Users.GetUserByEmail;
+using TaskSystem.Application.Queries.Users.GetUserById;
+using TaskSystem.Application.Queries.Uzduotys.GetAllUzduotys;
+using TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserId;
+using TaskSystem.Application.Queries.Uzduotys.GetUzduotisById;
+using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserEmail;
+using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserId;
+using TaskSystem.Application.Validation.Uzduotys;
+using TaskSystem.Domain.Entities;
+using TaskSystem.Domain.Interfaces;
+using TaskSystem.Infrastructure.Auth;
+using TaskSystem.Infrastructure.Persistence;
+using TaskSystem.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -80,8 +100,47 @@ builder
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("DefaultConnection"));
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new Exception(
+        "Connection string nerastas. Nustatykite jį User Secrets arba Environment Variables."
+    );
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+);
+
+builder.Services.AddHealthChecks().AddMySql(connectionString);
+
+builder.Services.AddScoped<RegisterUserHandler>();
+builder.Services.AddScoped<LoginUserHandler>();
+builder.Services.AddScoped<AdminUpdateUserHandler>();
+builder.Services.AddScoped<UpdateUserHandler>();
+builder.Services.AddScoped<DeleteUserHandler>();
+builder.Services.AddScoped<ChangePasswordHandler>();
+
+builder.Services.AddScoped<CreateUzduotisHandler>();
+builder.Services.AddScoped<UpdateUzduotisHandler>();
+builder.Services.AddScoped<ResetLastUzduotisHandler>();
+builder.Services.AddScoped<AdminDeleteUzduotisHandler>();
+builder.Services.AddScoped<DeleteUzduotisHandler>();
+
+builder.Services.AddScoped<GetUserByIdHandler>();
+builder.Services.AddScoped<GetUserByEmailHandler>();
+
+builder.Services.AddScoped<GetUzduotisByIdHandler>();
+builder.Services.AddScoped<GetUzduotysByUserIdHandler>();
+builder.Services.AddScoped<GetLastUzduotisByUserIdHandler>();
+builder.Services.AddScoped<GetAllUzduotysHandler>();
+builder.Services.AddScoped<GetUzduotysByUserEmailHandler>();
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUzduotisRepository, UzduotisRepository>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+
+builder.Services.AddScoped<PasswordHasher<User>>();
+builder.Services.AddScoped<IJwtService, JwtService>();
 
 builder.Services.AddValidatorsFromAssemblyContaining<UzduotisRequestDtoValidator>();
 builder.Services.AddFluentValidationAutoValidation();

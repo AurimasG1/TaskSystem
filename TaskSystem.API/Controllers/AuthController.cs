@@ -1,8 +1,7 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskSystem.Common.DTO;
-using TaskSystem.Services.Implementation;
-using TaskSystem.Services.Interface;
+using TaskSystem.Application.Commands.Users.LoginUser;
+using TaskSystem.Application.Commands.Users.RegisterUser;
+using TaskSystem.Application.DTO.Auth;
 
 namespace TaskSystem.API.Controllers;
 
@@ -10,30 +9,24 @@ namespace TaskSystem.API.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
-    private readonly IUserService _users;
-    private readonly JwtService _jwt;
+    private readonly RegisterUserHandler _register;
+    private readonly LoginUserHandler _login;
 
-    public AuthController(IUserService users, JwtService jwt)
+    public AuthController(RegisterUserHandler register, LoginUserHandler login)
     {
-        _users = users;
-        _jwt = jwt;
+        _register = register;
+        _login = login;
     }
 
     [HttpPost("register")]
-    [AllowAnonymous]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest req)
-    {
-        var user = await _users.RegisterAsync(req.Email, req.Password, req.Role);
-        return Ok(new { message = "Registered", userId = user.Id });
-    }
+    public async Task<IActionResult> Register(RegisterRequest request) =>
+        Ok(
+            await _register.Handle(
+                new RegisterUserCommand(request.Email, request.Password, request.AdminCode)
+            )
+        );
 
     [HttpPost("login")]
-    [AllowAnonymous]
-    public async Task<IActionResult> Login([FromBody] LoginRequest req)
-    {
-        var user = await _users.LoginAsync(req.Email, req.Password);
-        var token = _jwt.GenerateToken(user!.Id, user.Email, user.Role);
-
-        return Ok(new { token });
-    }
+    public async Task<IActionResult> Login(LoginRequest dto) =>
+        Ok(await _login.Handle(new LoginUserCommand(dto.Email, dto.Password)));
 }
