@@ -8,7 +8,8 @@ using TaskSystem.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace TaskSystem.Infrastructure.Migrations
+namespace TaskSystem.Infrastructure.Persistence.Migrations
+
 {
     [DbContext(typeof(AppDbContext))]
     partial class AppDbContextModelSnapshot : ModelSnapshot

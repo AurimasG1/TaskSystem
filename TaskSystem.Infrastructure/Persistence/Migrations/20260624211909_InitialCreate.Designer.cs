@@ -9,7 +9,8 @@ using TaskSystem.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace TaskSystem.Infrastructure.Migrations
+namespace TaskSystem.Infrastructure.Persistence.Migrations
+
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20260624211909_InitialCreate")]
