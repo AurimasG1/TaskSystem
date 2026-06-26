@@ -41,7 +41,7 @@ public class AdminUserController : ControllerBase
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, AdminUpdateUserRequest dto) =>
-        Ok(await _update.Handle(new AdminUpdateUserCommand(id, dto.Email, dto.Role, dto.UserName)));
+        Ok(await _update.Handle(new AdminUpdateUserCommand(id, dto.Email, dto.UserName, dto.Role)));
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)

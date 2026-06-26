@@ -33,7 +33,7 @@ public class UzduotisRepository : Repository<Uzduotis>, IUzduotisRepository
     public async Task<List<Uzduotis>> GetByUserEmailAsync(string email) =>
         await _dbSet
             .AsNoTracking()
-            .Where(u => u.User.Email.Value == email)
+            .Where(u => u.User.EmailValue == email)
             .Include(u => u.Status)
             .Include(u => u.User)
             .ToListAsync();

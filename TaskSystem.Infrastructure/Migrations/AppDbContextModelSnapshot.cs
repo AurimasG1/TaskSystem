@@ -3,21 +3,17 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskSystem.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace TaskSystem.Infrastructure.Persistence.Migrations
-
+namespace TaskSystem.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260624211909_InitialCreate")]
-    partial class InitialCreate
+    partial class AppDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -37,7 +33,7 @@ namespace TaskSystem.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("Email")
+                    b.Property<string>("EmailValue")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -52,6 +48,11 @@ namespace TaskSystem.Infrastructure.Persistence.Migrations
                     b.Property<string>("UserName")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<string>("_email")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("Email");
 
                     b.HasKey("Id");
 
@@ -75,7 +76,7 @@ namespace TaskSystem.Infrastructure.Persistence.Migrations
                     b.Property<int>("StatusId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Title")
+                    b.Property<string>("TitleValue")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -84,6 +85,11 @@ namespace TaskSystem.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
+
+                    b.Property<string>("_title")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("Title");
 
                     b.HasKey("Id");
 

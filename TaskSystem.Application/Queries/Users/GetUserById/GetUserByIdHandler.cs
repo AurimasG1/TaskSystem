@@ -16,11 +16,10 @@ public class GetUserByIdHandler
     public async Task<UserDto> Handle(GetUserByIdQuery request)
     {
         // 1. Load user (no tracking)
-        var user = await _userRepo.GetByIdAsync(request.Id);
-        if (user is null)
-            throw new UserNotFoundException(request.Id);
+        var user =
+            await _userRepo.GetByIdAsync(request.Id) ?? throw new UserNotFoundException(request.Id);
 
         // 2. Return DTO
-        return new UserDto(user.Id, user.Email.Value, user.Role, user.UserName);
+        return new UserDto(user.Id, user.Email.Value, user.UserName, user.Role);
     }
 }

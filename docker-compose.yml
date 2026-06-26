@@ -1,53 +1,52 @@
-version: "3.9"
+version: '3.9'
 
 services:
-  # -----------------------------------------
-  # MySQL duomenų bazė
-  # -----------------------------------------
   mysql:
     image: mysql:8
     container_name: tasksystem-mysql
     restart: always
-
-    # Environment Variables perduodami į MySQL konteinerį
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: tasksystem
-
-    # Atidarome MySQL portą
     ports:
-      - "3306:3306"
-
-    # Duomenų išsaugojimui tarp paleidimų
+      - '3306:3306'
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # -----------------------------------------
-  # TaskSystem API konteineris
-  # -----------------------------------------
-  api:
-    build: ./TaskSystem.API
-    container_name: tasksystem-api
-
-    # API paleidžiamas tik tada, kai MySQL jau veikia
+  migrate:
+    build:
+      context: .
+      dockerfile: TaskSystem.API/Dockerfile
     depends_on:
-      - mysql
-
-    # Environment Variables perduodami į ASP.NET Core API
+      mysql:
+        condition: service_healthy
     environment:
-      # Connection string nurodo MySQL konteinerio hostname: "mysql"
-      ConnectionStrings__DefaultConnection: "server=mysql;port=3306;database=tasksystem;user=root;password=root"
+      ConnectionStrings__DefaultConnection: 'server=mysql;port=3306;database=tasksystem;user=root;password=root'
+      Jwt__Key: 'SUPER_SECRET_KEY_123'
+      Jwt__Issuer: 'TaskSystem'
+    command: ['dotnet', 'TaskSystem.API.dll', '--migrate']
 
-      # JWT raktas (production aplinkoje būtų saugomas saugiau)
-      Jwt__Key: "SLAPTAS_RAKTAS"
-      Jwt__Issuer: "TaskSystemAPI"
-
-    # API portų atvaizdavimas
+  api:
+    build:
+      context: .
+      dockerfile: TaskSystem.API/Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: 'Development'
+      ConnectionStrings__DefaultConnection: 'server=mysql;port=3306;database=tasksystem;user=root;password=root'
+      Jwt__Key: 'SUPER_SECRET_KEY_123'
+      Jwt__Issuer: 'TaskSystem'
     ports:
-      - "5001:8080"
+      - '8080:8080'
 
-# -----------------------------------------
-# MySQL duomenų saugojimo volume
-# -----------------------------------------
 volumes:
   mysql_data:

@@ -22,5 +22,11 @@ namespace TaskSystem.Domain.Entities
             _title = TaskTitle.Create(title);
             UpdatedAt = DateTime.UtcNow;
         }
+
+        public string TitleValue
+        {
+            get => _title.Value;
+            private set => _title = TaskTitle.Create(value);
+        }
     }
 }

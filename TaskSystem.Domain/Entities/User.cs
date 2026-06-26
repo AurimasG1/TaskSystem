@@ -18,5 +18,11 @@ namespace TaskSystem.Domain.Entities
         {
             _email = Email.Create(email);
         }
+
+        public string EmailValue
+        {
+            get => _email.Value;
+            private set => _email = Email.Create(value);
+        }
     }
 }
