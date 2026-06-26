@@ -21,6 +21,6 @@ public class GetUserByIdHandler
             throw new UserNotFoundException(request.Id);
 
         // 2. Return DTO
-        return new UserDto(user.Id, user.Email, user.Role, user.UserName);
+        return new UserDto(user.Id, user.Email.Value, user.Role, user.UserName);
     }
 }

@@ -29,7 +29,7 @@ public class AdminUpdateUserHandler
             throw new UserAlreadyExistsException(request.Email);
 
         // 3. Update fields
-        user.Email = request.Email.ToLowerInvariant().Trim();
+        user.SetEmail(request.Email.ToLowerInvariant().Trim());
         user.UserName = request.UserName;
         user.Role = request.Role;
 
@@ -37,6 +37,6 @@ public class AdminUpdateUserHandler
         await _repo.SaveChangesAsync();
 
         // 5. Return DTO
-        return new UserDto(user.Id, user.Email, user.UserName, user.Role);
+        return new UserDto(user.Id, user.Email.Value, user.UserName, user.Role);
     }
 }

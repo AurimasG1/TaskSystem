@@ -4,6 +4,7 @@ using TaskSystem.Application.DTO.Auth;
 using TaskSystem.Domain.Entities;
 using TaskSystem.Domain.Exceptions;
 using TaskSystem.Domain.Interfaces;
+using TaskSystem.Domain.ValueObjects;
 
 namespace TaskSystem.Application.Commands.Users.RegisterUser;
 
@@ -44,18 +45,15 @@ public class RegisterUserHandler
             role = "admin";
         }
 
-        var user = new User
-        {
-            Email = request.Email.ToLowerInvariant().Trim(),
-            Role = role,
-            CreatedAt = DateTime.UtcNow,
-        };
+        var user = new User { Role = role, CreatedAt = DateTime.UtcNow };
+
+        user.SetEmail(request.Email.ToLowerInvariant().Trim());
 
         user.PasswordHash = _hasher.HashPassword(user, request.Password);
 
         await _repo.AddAsync(user);
         await _repo.SaveChangesAsync();
 
-        return new RegisterResponseDto(user.Id, user.Email, user.Role);
+        return new RegisterResponseDto(user.Id, user.Email.Value, user.Role);
     }
 }

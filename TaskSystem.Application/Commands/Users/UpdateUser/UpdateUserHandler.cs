@@ -29,13 +29,13 @@ public class UpdateUserHandler
             throw new UserAlreadyExistsException(request.Email);
 
         // 3. Update fields
-        user.Email = request.Email.ToLowerInvariant().Trim();
+        user.SetEmail(request.Email.ToLowerInvariant().Trim());
         user.UserName = request.UserName;
 
         // 4. Save changes
         await _repo.SaveChangesAsync();
 
         // 5. Return DTO
-        return new UserDto(user.Id, user.Email, user.Role, user.UserName);
+        return new UserDto(user.Id, user.Email.Value, user.Role, user.UserName);
     }
 }

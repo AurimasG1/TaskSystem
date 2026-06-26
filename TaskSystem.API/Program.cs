@@ -142,7 +142,7 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<PasswordHasher<User>>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 
-builder.Services.AddValidatorsFromAssemblyContaining<UzduotisRequestDtoValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserCommandValidator>();
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
 
@@ -158,6 +158,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<ValidationMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

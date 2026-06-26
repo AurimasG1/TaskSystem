@@ -24,18 +24,19 @@ public class ResetLastUzduotisHandler
             ?? throw new UzduotisNotFoundException($"User {request.UserId} has no tasks.");
 
         // 2. Reset logic
-        task.Title = "(reset) " + task.Title;
+        task.SetTitle("(reset) " + task.Title.Value);
         task.Description = null;
         task.StatusId = 1;
         task.UpdatedAt = DateTime.UtcNow;
 
         // 3. Save
+        await _repo.UpdateAsync(task);
         await _repo.SaveChangesAsync();
 
         // 4. Return DTO
         return new UzduotisDto(
             task.Id,
-            task.Title,
+            task.Title.Value,
             task.Description,
             task.StatusId,
             task.UserId,

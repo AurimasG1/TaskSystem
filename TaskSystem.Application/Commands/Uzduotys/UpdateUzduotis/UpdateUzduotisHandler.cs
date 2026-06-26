@@ -28,7 +28,7 @@ public class UpdateUzduotisHandler
             throw new UnauthorizedAccessException("You cannot edit this task.");
 
         // 3. Update fields
-        task.Title = request.Title;
+        task.SetTitle(request.Title);
         task.Description = request.Description;
         task.StatusId = request.StatusId;
         task.UpdatedAt = DateTime.UtcNow;
@@ -39,7 +39,7 @@ public class UpdateUzduotisHandler
         // 5. Return DTO
         return new UzduotisDto(
             task.Id,
-            task.Title,
+            task.Title.Value,
             task.Description,
             task.StatusId,
             task.UserId,

@@ -14,11 +14,11 @@ public class UserRepository : Repository<User>, IUserRepository
         await _dbSet.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
 
     public async Task<User?> GetByEmailAsync(string email) =>
-        await _dbSet.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);
+        await _dbSet.AsNoTracking().FirstOrDefaultAsync(u => u.Email.Value == email);
 
     public async Task<User?> GetByIdForUpdateAsync(int id) =>
         await _dbSet.FirstOrDefaultAsync(u => u.Id == id);
 
     public async Task<User?> GetByEmailForUpdateAsync(string email) =>
-        await _dbSet.FirstOrDefaultAsync(u => u.Email == email);
+        await _dbSet.FirstOrDefaultAsync(u => u.Email.Value == email);
 }

@@ -23,7 +23,7 @@ public class LoginUserHandler
     {
         var user =
             await _userRepo.GetByEmailAsync(request.Email)
-            ?? throw new InvalidCredentialsException();
+            ?? throw new UserNotFoundException(request.Email);
 
         var result = _hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
         if (result == PasswordVerificationResult.Failed)
@@ -32,6 +32,12 @@ public class LoginUserHandler
         string accessToken = _jwt.GenerateAccessToken(user);
         string refreshToken = _jwt.GenerateRefreshToken();
 
-        return new LoginResponseDto(user.Id, user.Email, user.Role, accessToken, refreshToken);
+        return new LoginResponseDto(
+            user.Id,
+            user.Email.Value,
+            user.Role,
+            accessToken,
+            refreshToken
+        );
     }
 }

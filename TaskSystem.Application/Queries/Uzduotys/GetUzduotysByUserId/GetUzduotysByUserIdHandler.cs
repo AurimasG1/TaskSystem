@@ -18,7 +18,7 @@ public class GetUzduotysByUserIdHandler
 
         return tasks.Select(t => new UzduotisDto(
             t.Id,
-            t.Title,
+            t.Title.Value,
             t.Description,
             t.StatusId,
             t.UserId,

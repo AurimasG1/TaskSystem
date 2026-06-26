@@ -2,6 +2,7 @@ using TaskSystem.Application.DTO.Uzduotys;
 using TaskSystem.Domain.Entities;
 using TaskSystem.Domain.Exceptions;
 using TaskSystem.Domain.Interfaces;
+using TaskSystem.Domain.ValueObjects;
 
 namespace TaskSystem.Application.Commands.Uzduotys.CreateUzduotis;
 
@@ -27,12 +28,12 @@ public class CreateUzduotisHandler
         var task = new Uzduotis
         {
             UserId = request.UserId,
-            Title = request.Title,
             Description = request.Description,
             StatusId = 1,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
+        task.SetTitle(request.Title);
 
         // 3. Save
         await _repo.AddAsync(task);
@@ -41,7 +42,7 @@ public class CreateUzduotisHandler
         // 4. Return DTO
         return new UzduotisDto(
             task.Id,
-            task.Title,
+            task.Title.Value,
             task.Description,
             task.StatusId,
             task.UserId,

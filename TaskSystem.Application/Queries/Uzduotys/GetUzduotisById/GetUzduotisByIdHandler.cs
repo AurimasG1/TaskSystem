@@ -20,7 +20,7 @@ public class GetUzduotisByIdHandler
 
         return new UzduotisDto(
             task.Id,
-            task.Title,
+            task.Title.Value,
             task.Description,
             task.StatusId,
             task.UserId,
