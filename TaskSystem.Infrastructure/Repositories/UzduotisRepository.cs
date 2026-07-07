@@ -30,16 +30,13 @@ public class UzduotisRepository : Repository<Uzduotis>, IUzduotisRepository
             .Include(u => u.UserProfile)
             .FirstOrDefaultAsync(u => u.Id == id);
 
-    // ✔ Correct: Uzduotis belongs to UserProfile, not User
     public async Task<List<Uzduotis>> GetByUserProfileIdAsync(int userProfileId) =>
         await _dbSet
             .AsNoTracking()
             .Where(u => u.UserProfileId == userProfileId)
             .Include(u => u.Status)
-            .Include(u => u.UserProfile)
             .ToListAsync();
 
-    // ✔ Correct: search by email through UserProfile → User
     public async Task<List<Uzduotis>> GetByUserEmailAsync(string email) =>
         await _dbSet
             .AsNoTracking()
@@ -49,14 +46,19 @@ public class UzduotisRepository : Repository<Uzduotis>, IUzduotisRepository
                 .ThenInclude(p => p.User)
             .ToListAsync();
 
-    // ✔ Correct: last task by UserProfileId
     public async Task<Uzduotis?> GetLastByUserProfileIdAsync(int userProfileId) =>
         await _dbSet
             .AsNoTracking()
             .Where(u => u.UserProfileId == userProfileId)
             .OrderByDescending(u => u.UpdatedAt)
             .Include(u => u.Status)
-            .Include(u => u.UserProfile)
+            .FirstOrDefaultAsync();
+
+    public async Task<Uzduotis?> GetLastByUserProfileIdForUpdateAsync(int userProfileId) =>
+        await _dbSet
+            .Where(u => u.UserProfileId == userProfileId)
+            .OrderByDescending(u => u.UpdatedAt)
+            .Include(u => u.Status)
             .FirstOrDefaultAsync();
 
     public async Task<List<Uzduotis>> GetTopAsync(int count) =>

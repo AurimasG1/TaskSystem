@@ -47,7 +47,6 @@ public class UserController : ControllerBase
     public async Task<IActionResult> UpdateMe(UserUpdateRequest dto)
     {
         var command = new UserUpdateCommand(UserId, dto.FirstName, dto.LastName);
-
         var result = await _update.Handle(command);
         return Ok(result);
     }
@@ -71,12 +70,11 @@ public class UserController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Roles = "onboarding")]
+    [Authorize(Roles = "onboarding,admin")]
     [HttpPost("register-profile")]
     public async Task<IActionResult> RegisterProfile(UserRegisterRequest dto)
     {
         var command = new UserRegisterCommand(UserId, dto.FirstName, dto.LastName);
-
         var result = await _userRegisterHandler.Handle(command);
         return Ok(result);
     }

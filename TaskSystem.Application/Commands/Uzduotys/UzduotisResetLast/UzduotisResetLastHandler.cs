@@ -19,17 +19,13 @@ public class UzduotisResetLastHandler
 
     public async Task<UzduotisDto> Handle(UzduotisResetLastCommand request)
     {
-        // 1. Load last task for this profile
         var task =
-            await _taskRepo.GetLastByUserProfileIdAsync(request.UserProfileId)
+            await _taskRepo.GetLastByUserProfileIdForUpdateAsync(request.UserProfileId)
             ?? throw new UzduotisNotFoundException(
                 $"UserProfile {request.UserProfileId} has no tasks."
             );
-
-        // 2. Apply domain reset logic
         task.Reset();
 
-        // 3. Save
         await _repo.SaveChangesAsync();
 
         // 4. Return DTO

@@ -9,8 +9,8 @@ namespace TaskSystem.Domain.Entities
         public Email Email => _email;
         public string PasswordHash { get; set; } = null!;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public string Role { get; set; } = "onboarding";
-        public UserProfile Profile { get; set; }
+        public string Role { get; set; } = null!;
+        public UserProfile Profile { get; set; } = null!;
 
         public void SetEmail(string email)
         {

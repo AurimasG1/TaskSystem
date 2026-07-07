@@ -1,5 +1,5 @@
 using Mapster;
-using TaskSystem.Application.DTO.Responses.Users;
+using TaskSystem.Application.DTO.Responses.Auth;
 using TaskSystem.Domain.Entities;
 using TaskSystem.Domain.Interfaces;
 
@@ -9,14 +9,20 @@ public class UserRegisterHandler
 {
     private readonly IUserRepository _userRepo;
     private readonly IUserProfileRepository _profileRepo;
+    private readonly IJwtService _jwt;
 
-    public UserRegisterHandler(IUserRepository userRepo, IUserProfileRepository profileRepo)
+    public UserRegisterHandler(
+        IUserRepository userRepo,
+        IUserProfileRepository profileRepo,
+        IJwtService jwt
+    )
     {
         _userRepo = userRepo;
         _profileRepo = profileRepo;
+        _jwt = jwt;
     }
 
-    public async Task<UserRegisterResponse> Handle(UserRegisterCommand request)
+    public async Task<AuthLoginResponse> Handle(UserRegisterCommand request)
     {
         var user =
             await _userRepo.GetByIdForUpdateAsync(request.UserId)
@@ -25,27 +31,27 @@ public class UserRegisterHandler
         if (user.Role != "onboarding")
             throw new Exception("Profile already completed");
 
-        // Create profile
-        var profile = request.Adapt<UserProfile>();
-        profile.UserId = user.Id;
-
-        await _profileRepo.AddAsync(profile);
-
-        // Change role from onboarding → user
+        var profile = user.Profile;
+        profile.FirstName = request.FirstName;
+        profile.LastName = request.LastName;
         user.Role = "user";
-        await _userRepo.UpdateAsync(user);
 
-        // Save both
-        await _profileRepo.SaveChangesAsync();
         await _userRepo.SaveChangesAsync();
+        await _profileRepo.SaveChangesAsync();
 
-        return new UserRegisterResponse(
+        // Generate new JWT WITHOUT password
+        var accessToken = _jwt.GenerateAccessToken(user);
+        var refreshToken = _jwt.GenerateRefreshToken();
+
+        await _profileRepo.SaveChangesAsync();
+
+        return new AuthLoginResponse(
             user.Id,
             profile.Id,
-            profile.FirstName,
-            profile.LastName,
             user.EmailValue,
-            user.Role
+            user.Role,
+            accessToken,
+            refreshToken
         );
     }
 }

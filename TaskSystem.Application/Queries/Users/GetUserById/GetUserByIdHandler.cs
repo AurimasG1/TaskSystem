@@ -32,7 +32,7 @@ public class GetUserByIdHandler
             FirstName: profile.FirstName,
             LastName: profile.LastName,
             Email: user.EmailValue,
-            Role: profile.Role
+            Role: user.Role
         );
     }
 }

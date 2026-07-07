@@ -25,7 +25,7 @@ public class GetUserByEmailHandler
             FirstName: user.Profile.FirstName,
             LastName: user.Profile.LastName,
             Email: user.EmailValue,
-            Role: user.Profile.Role
+            Role: user.Role
         );
     }
 }

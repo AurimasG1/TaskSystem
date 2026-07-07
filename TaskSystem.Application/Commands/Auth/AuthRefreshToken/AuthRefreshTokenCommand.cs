@@ -1,3 +1,3 @@
 namespace TaskSystem.Application.Commands.Auth.AuthRefreshToken;
 
-public record RefreshTokenCommand(string RefreshToken);
+public record AuthRefreshTokenCommand(string RefreshToken);

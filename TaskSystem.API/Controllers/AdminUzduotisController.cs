@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskSystem.Application.Commands.Uzduotys.ResetLast;
 using TaskSystem.Application.Commands.Uzduotys.UzduotisDelete;
@@ -7,6 +8,7 @@ using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserProfileId;
 
 namespace TaskSystem.API.Controllers;
 
+[Authorize(Roles = "admin")]
 [ApiController]
 [Route("api/admin/uzduotys")]
 public class AdminUzduotisController : ControllerBase

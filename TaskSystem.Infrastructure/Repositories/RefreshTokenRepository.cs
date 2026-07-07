@@ -12,4 +12,20 @@ public class RefreshTokenRepository : Repository<RefreshToken>, IRefreshTokenRep
 
     public async Task<RefreshToken?> GetByTokenAsync(string token) =>
         await _dbSet.FirstOrDefaultAsync(t => t.Token == token);
+
+    public Task<List<RefreshToken>> GetExpiredAsync()
+    {
+        return _dbSet.Where(t => t.ExpiresAt < DateTime.UtcNow).ToListAsync();
+    }
+
+    public Task<List<RefreshToken>> GetRevokedAsync()
+    {
+        return _dbSet.Where(t => t.IsRevoked).ToListAsync();
+    }
+
+    public Task DeleteRangeAsync(List<RefreshToken> tokens)
+    {
+        _dbSet.RemoveRange(tokens);
+        return Task.CompletedTask;
+    }
 }

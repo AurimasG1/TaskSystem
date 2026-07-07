@@ -1,6 +1,6 @@
 namespace TaskSystem.Application.DTO.Responses.Auth;
 
-public record AuthLoginResponse(
+public record AuthRefreshTokenResponse(
     int UserId,
     int ProfileId,
     string Email,

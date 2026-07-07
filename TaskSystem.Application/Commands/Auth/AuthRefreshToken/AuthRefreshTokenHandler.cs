@@ -4,13 +4,13 @@ using TaskSystem.Domain.Interfaces;
 
 namespace TaskSystem.Application.Commands.Auth.AuthRefreshToken
 {
-    public class RefreshTokenHandler
+    public class AuthRefreshTokenHandler
     {
         private readonly IRefreshTokenRepository _refreshRepo;
         private readonly IUserRepository _userRepo;
         private readonly IJwtService _jwt;
 
-        public RefreshTokenHandler(
+        public AuthRefreshTokenHandler(
             IRefreshTokenRepository refreshRepo,
             IUserRepository userRepo,
             IJwtService jwt
@@ -21,7 +21,7 @@ namespace TaskSystem.Application.Commands.Auth.AuthRefreshToken
             _jwt = jwt;
         }
 
-        public async Task<RefreshTokenResponse> Handle(RefreshTokenCommand request)
+        public async Task<AuthRefreshTokenResponse> Handle(AuthRefreshTokenCommand request)
         {
             var token =
                 await _refreshRepo.GetByTokenAsync(request.RefreshToken)
@@ -31,7 +31,8 @@ namespace TaskSystem.Application.Commands.Auth.AuthRefreshToken
                 throw new Exception("Refresh token expired");
 
             var user =
-                await _userRepo.GetByIdAsync(token.UserId) ?? throw new Exception("User not found");
+                await _userRepo.GetByIdForUpdateAsync(token.UserId)
+                ?? throw new Exception("User not found");
 
             // ROTACIJA — sugeneruojam naują refresh token
             token.IsRevoked = true;
@@ -49,9 +50,16 @@ namespace TaskSystem.Application.Commands.Auth.AuthRefreshToken
 
             await _refreshRepo.SaveChangesAsync();
 
-            var newAccessToken = _jwt.GenerateAccessToken(user.Id, user.EmailValue, user.Role);
+            var newAccessToken = _jwt.GenerateAccessToken(user);
 
-            return new RefreshTokenResponse(newAccessToken, newRefreshToken);
+            return new AuthRefreshTokenResponse(
+                user.Id,
+                user.Profile.Id,
+                user.EmailValue,
+                user.Role,
+                newAccessToken,
+                newRefreshToken
+            );
         }
     }
 }

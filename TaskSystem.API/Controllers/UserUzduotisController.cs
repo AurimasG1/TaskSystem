@@ -22,31 +22,31 @@ public class UserUzduotisController : ControllerBase
     private readonly UzduotisCreateHandler _create;
     private readonly UzduotisUpdateHandler _update;
     private readonly UzduotisDeleteHandler _delete;
+    private readonly UzduotisResetLastHandler _resetLast;
     private readonly GetUzduotisByIdHandler _getById;
     private readonly GetUzduotysByUserProfileIdHandler _getByProfile;
     private readonly GetLastUzduotisByUserProfileIdHandler _getLast;
-    private readonly UzduotisResetLastHandler _resetLast;
 
     public UserUzduotisController(
         UzduotisCreateHandler create,
         UzduotisUpdateHandler update,
         UzduotisDeleteHandler delete,
+        UzduotisResetLastHandler resetLast,
         GetUzduotisByIdHandler getById,
         GetUzduotysByUserProfileIdHandler getByProfile,
-        GetLastUzduotisByUserProfileIdHandler getLast,
-        UzduotisResetLastHandler resetLast
+        GetLastUzduotisByUserProfileIdHandler getLast
     )
     {
         _create = create;
         _update = update;
         _delete = delete;
+        _resetLast = resetLast;
         _getById = getById;
         _getByProfile = getByProfile;
         _getLast = getLast;
-        _resetLast = resetLast;
     }
 
-    private int UserProfileId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    private int UserProfileId => int.Parse(User.FindFirst("profileId")!.Value);
 
     // POST /api/user/uzduotys
     [HttpPost]
@@ -62,7 +62,6 @@ public class UserUzduotisController : ControllerBase
     public async Task<IActionResult> GetMy()
     {
         var result = await _getByProfile.Handle(new GetUzduotysByUserProfileIdQuery(UserProfileId));
-
         return Ok(result);
     }
 
@@ -71,10 +70,8 @@ public class UserUzduotisController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var item = await _getById.Handle(new GetUzduotisByIdQuery(id));
-
         if (item.UserProfileId != UserProfileId)
             return Forbid("Not your task");
-
         return Ok(item);
     }
 
@@ -89,7 +86,6 @@ public class UserUzduotisController : ControllerBase
             Optional<int>.FromNullable(dto.StatusId),
             UserProfileId
         );
-
         var updated = await _update.Handle(command);
         return Ok(updated);
     }
@@ -107,7 +103,6 @@ public class UserUzduotisController : ControllerBase
     public async Task<IActionResult> GetLast()
     {
         var result = await _getLast.Handle(new GetLastUzduotisByUserProfileIdQuery(UserProfileId));
-
         return Ok(result);
     }
 
@@ -116,7 +111,6 @@ public class UserUzduotisController : ControllerBase
     public async Task<IActionResult> ResetLast()
     {
         var result = await _resetLast.Handle(new UzduotisResetLastCommand(UserProfileId));
-
         return Ok(result);
     }
 }

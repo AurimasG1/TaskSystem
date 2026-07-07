@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="TaskSystem.AdminCli/TaskSystem.AdminCli.csproj" />
   <Project Path="TaskSystem.API/TaskSystem.API.csproj" />
   <Project Path="TaskSystem.Application/TaskSystem.Application.csproj" />
   <Project Path="TaskSystem.Infrastructure/TaskSystem.Infrastructure.csproj" />

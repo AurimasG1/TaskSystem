@@ -13,12 +13,12 @@ public class AuthController : ControllerBase
 {
     private readonly AuthRegisterHandler _registerHandler;
     private readonly AuthLoginHandler _loginHandler;
-    private readonly RefreshTokenHandler _refreshHandler;
+    private readonly AuthRefreshTokenHandler _refreshHandler;
 
     public AuthController(
         AuthRegisterHandler registerHandler,
         AuthLoginHandler loginHandler,
-        RefreshTokenHandler refreshHandler
+        AuthRefreshTokenHandler refreshHandler
     )
     {
         _registerHandler = registerHandler;
@@ -54,7 +54,7 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
     {
-        var command = new RefreshTokenCommand(request.RefreshToken);
+        var command = new AuthRefreshTokenCommand(request.RefreshToken);
         var result = await _refreshHandler.Handle(command);
         return Ok(result);
     }

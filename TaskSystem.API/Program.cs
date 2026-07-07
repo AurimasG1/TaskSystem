@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using TaskSystem.API.Middleware;
+using TaskSystem.Application.Commands.Admin;
 using TaskSystem.Application.Commands.Auth.AuthLogin;
 using TaskSystem.Application.Commands.Auth.AuthRefreshToken;
 using TaskSystem.Application.Commands.Auth.AuthRegister;
@@ -30,9 +31,11 @@ using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserEmail;
 using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserProfileId;
 using TaskSystem.Domain.Entities;
 using TaskSystem.Domain.Interfaces;
+using TaskSystem.Infrastructure.Admin;
 using TaskSystem.Infrastructure.Auth;
 using TaskSystem.Infrastructure.Persistence;
 using TaskSystem.Infrastructure.Repositories;
+using TaskSystem.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -157,10 +160,14 @@ builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IUzduotisRepository, UzduotisRepository>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped<AdminPromoteWithTokenHandler>();
+builder.Services.AddScoped<IAdminPromotionTokenRepository, AdminPromotionTokenRepository>();
+builder.Services.AddScoped<AdminPromotionTokenGenerator>();
+builder.Services.AddHostedService<TokenCleanupService>();
 
 builder.Services.AddScoped<PasswordHasher<User>>();
 builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddScoped<RefreshTokenHandler>();
+builder.Services.AddScoped<AuthRefreshTokenHandler>();
 
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserCommandValidator>();
 builder.Services.AddFluentValidationAutoValidation();

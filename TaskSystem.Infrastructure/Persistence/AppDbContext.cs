@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<UserProfile> UserProfiles { get; set; }
+    public DbSet<AdminPromotionToken> AdminPromotionTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
