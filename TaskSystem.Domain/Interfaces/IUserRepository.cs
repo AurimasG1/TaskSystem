@@ -2,7 +2,7 @@ using TaskSystem.Domain.Entities;
 
 namespace TaskSystem.Domain.Interfaces;
 
-public interface IUserRepository
+public interface IUserRepository : IRepository<User>
 {
     Task<User?> GetByIdAsync(int id);
     Task<User?> GetByEmailAsync(string email);

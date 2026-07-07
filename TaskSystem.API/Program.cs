@@ -1,28 +1,33 @@
 using System.Text;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Mapster;
+using MapsterMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using TaskSystem.API.Middleware;
-using TaskSystem.Application.Commands.Users.ChangePassword;
+using TaskSystem.Application.Commands.Auth.AuthLogin;
+using TaskSystem.Application.Commands.Auth.AuthRefreshToken;
+using TaskSystem.Application.Commands.Auth.AuthRegister;
 using TaskSystem.Application.Commands.Users.DeleteUser;
-using TaskSystem.Application.Commands.Users.LoginUser;
-using TaskSystem.Application.Commands.Users.RegisterUser;
-using TaskSystem.Application.Commands.Users.UpdateUser;
-using TaskSystem.Application.Commands.Uzduotys.CreateUzduotis;
-using TaskSystem.Application.Commands.Uzduotys.DeleteUzduotis;
-using TaskSystem.Application.Commands.Uzduotys.ResetLastUzduotis;
-using TaskSystem.Application.Commands.Uzduotys.UpdateUzduotis;
-using TaskSystem.Application.Queries.Users.GetUserByEmail;
+using TaskSystem.Application.Commands.Users.UserChangePassword;
+using TaskSystem.Application.Commands.Users.UserRegister;
+using TaskSystem.Application.Commands.Users.UserUpdate;
+using TaskSystem.Application.Commands.Uzduotys.ResetLast;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisCreate;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisDelete;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisUpdate;
+using TaskSystem.Application.Common;
+using TaskSystem.Application.Mapping;
+using TaskSystem.Application.Queries.Users;
 using TaskSystem.Application.Queries.Users.GetUserById;
 using TaskSystem.Application.Queries.Uzduotys.GetAllUzduotys;
-using TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserId;
+using TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserProfileId;
 using TaskSystem.Application.Queries.Uzduotys.GetUzduotisById;
 using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserEmail;
-using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserId;
-using TaskSystem.Application.Validation.Uzduotys;
+using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserProfileId;
 using TaskSystem.Domain.Entities;
 using TaskSystem.Domain.Interfaces;
 using TaskSystem.Infrastructure.Auth;
@@ -33,6 +38,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Controllers
 builder.Services.AddControllers();
+
+builder
+    .Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new OptionalJsonConverter<string>());
+        options.JsonSerializerOptions.Converters.Add(new OptionalJsonConverter<int>());
+    });
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -112,35 +125,42 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 );
 
 builder.Services.AddHealthChecks().AddMySql(connectionString);
+MapsterConfig.RegisterMappings();
+builder.Services.AddSingleton(TypeAdapterConfig.GlobalSettings);
+builder.Services.AddScoped<IMapper, ServiceMapper>();
 
-builder.Services.AddScoped<RegisterUserHandler>();
-builder.Services.AddScoped<LoginUserHandler>();
-builder.Services.AddScoped<AdminUpdateUserHandler>();
-builder.Services.AddScoped<UpdateUserHandler>();
+builder.Services.AddScoped<UserRegisterHandler>();
+builder.Services.AddScoped<AuthLoginHandler>();
+builder.Services.AddScoped<AuthRegisterHandler>();
+builder.Services.AddScoped<UserAdminUpdateHandler>();
+builder.Services.AddScoped<UserUpdateHandler>();
 builder.Services.AddScoped<DeleteUserHandler>();
-builder.Services.AddScoped<ChangePasswordHandler>();
+builder.Services.AddScoped<UserChangePasswordHandler>();
 
-builder.Services.AddScoped<CreateUzduotisHandler>();
-builder.Services.AddScoped<UpdateUzduotisHandler>();
-builder.Services.AddScoped<ResetLastUzduotisHandler>();
-builder.Services.AddScoped<AdminDeleteUzduotisHandler>();
-builder.Services.AddScoped<DeleteUzduotisHandler>();
+builder.Services.AddScoped<UzduotisCreateHandler>();
+builder.Services.AddScoped<UzduotisUpdateHandler>();
+builder.Services.AddScoped<UzduotisResetLastHandler>();
+builder.Services.AddScoped<UzduotisAdminDeleteHandler>();
+builder.Services.AddScoped<UzduotisDeleteHandler>();
 
 builder.Services.AddScoped<GetUserByIdHandler>();
 builder.Services.AddScoped<GetUserByEmailHandler>();
 
 builder.Services.AddScoped<GetUzduotisByIdHandler>();
-builder.Services.AddScoped<GetUzduotysByUserIdHandler>();
-builder.Services.AddScoped<GetLastUzduotisByUserIdHandler>();
+builder.Services.AddScoped<GetUzduotysByUserProfileIdHandler>();
+builder.Services.AddScoped<GetLastUzduotisByUserProfileIdHandler>();
 builder.Services.AddScoped<GetAllUzduotysHandler>();
 builder.Services.AddScoped<GetUzduotysByUserEmailHandler>();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IUzduotisRepository, UzduotisRepository>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
 builder.Services.AddScoped<PasswordHasher<User>>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<RefreshTokenHandler>();
 
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserCommandValidator>();
 builder.Services.AddFluentValidationAutoValidation();

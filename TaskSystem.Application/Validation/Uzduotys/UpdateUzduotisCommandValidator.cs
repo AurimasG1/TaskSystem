@@ -1,16 +1,37 @@
 using FluentValidation;
-using TaskSystem.Application.Commands.Uzduotys.UpdateUzduotis;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisUpdate;
 
 namespace TaskSystem.Application.Validation.Uzduotys;
 
-public class UpdateUzduotisCommandValidator : AbstractValidator<UpdateUzduotisCommand>
+public class UpdateUzduotisCommandValidator : AbstractValidator<UzduotisUpdateCommand>
 {
     public UpdateUzduotisCommandValidator()
     {
-        RuleFor(x => x.Title).NotEmpty().MaximumLength(100);
+        // Title
+        When(
+            x => x.Title.HasValue,
+            () =>
+            {
+                RuleFor(x => x.Title.Value).NotEmpty().MaximumLength(100);
+            }
+        );
 
-        RuleFor(x => x.Description).MaximumLength(500);
+        // Description
+        When(
+            x => x.Description.HasValue,
+            () =>
+            {
+                RuleFor(x => x.Description.Value).MaximumLength(500);
+            }
+        );
 
-        RuleFor(x => x.StatusId).InclusiveBetween(1, 3);
+        // StatusId
+        When(
+            x => x.StatusId.HasValue,
+            () =>
+            {
+                RuleFor(x => x.StatusId.Value).InclusiveBetween(1, 3);
+            }
+        );
     }
 }

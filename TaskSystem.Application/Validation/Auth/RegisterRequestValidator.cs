@@ -1,9 +1,9 @@
 using FluentValidation;
-using TaskSystem.Application.DTO.Auth;
+using TaskSystem.Application.DTO.Requests.Auth;
 
 namespace TaskSystem.Application.Validation.Auth;
 
-public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
+public class RegisterRequestValidator : AbstractValidator<AuthRegisterRequest>
 {
     public RegisterRequestValidator()
     {

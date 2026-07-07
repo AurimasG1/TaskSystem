@@ -1,5 +1,4 @@
-using TaskSystem.Application.DTO.Users;
-using TaskSystem.Domain.Exceptions;
+using TaskSystem.Application.DTO.Responses.Users;
 using TaskSystem.Domain.Interfaces;
 
 namespace TaskSystem.Application.Queries.Users.GetUserById;
@@ -7,19 +6,33 @@ namespace TaskSystem.Application.Queries.Users.GetUserById;
 public class GetUserByIdHandler
 {
     private readonly IUserRepository _userRepo;
+    private readonly IUserProfileRepository _profileRepo;
 
-    public GetUserByIdHandler(IUserRepository userRepo)
+    public GetUserByIdHandler(IUserRepository userRepo, IUserProfileRepository profileRepo)
     {
         _userRepo = userRepo;
+        _profileRepo = profileRepo;
     }
 
     public async Task<UserDto> Handle(GetUserByIdQuery request)
     {
-        // 1. Load user (no tracking)
+        // 1. Login user
         var user =
-            await _userRepo.GetByIdAsync(request.Id) ?? throw new UserNotFoundException(request.Id);
+            await _userRepo.GetByIdAsync(request.UserId) ?? throw new Exception("User not found");
 
-        // 2. Return DTO
-        return new UserDto(user.Id, user.Email.Value, user.UserName, user.Role);
+        // 2. Domain profile
+        var profile =
+            await _profileRepo.GetByUserIdAsync(request.UserId)
+            ?? throw new Exception("User profile not found");
+
+        // 3. DTO mapping (teisingas)
+        return new UserDto(
+            UserId: user.Id,
+            ProfileId: profile.Id,
+            FirstName: profile.FirstName,
+            LastName: profile.LastName,
+            Email: user.EmailValue,
+            Role: profile.Role
+        );
     }
 }

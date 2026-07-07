@@ -1,4 +1,4 @@
-using TaskSystem.Application.DTO.Uzduotys;
+using TaskSystem.Application.DTO.Responses.Uzduotys;
 using TaskSystem.Domain.Exceptions;
 using TaskSystem.Domain.Interfaces;
 
@@ -20,10 +20,10 @@ public class GetUzduotisByIdHandler
 
         return new UzduotisDto(
             task.Id,
-            task.Title.Value,
+            task.TitleValue,
             task.Description,
             task.StatusId,
-            task.UserId,
+            task.UserProfileId,
             task.CreatedAt,
             task.UpdatedAt
         );

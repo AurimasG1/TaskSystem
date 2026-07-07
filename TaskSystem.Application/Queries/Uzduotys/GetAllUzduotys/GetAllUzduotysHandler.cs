@@ -1,4 +1,4 @@
-using TaskSystem.Application.DTO.Uzduotys;
+using TaskSystem.Application.DTO.Responses.Uzduotys;
 using TaskSystem.Domain.Interfaces;
 
 namespace TaskSystem.Application.Queries.Uzduotys.GetAllUzduotys;
@@ -12,18 +12,19 @@ public class GetAllUzduotysHandler
         _repo = repo;
     }
 
-    public async Task<IEnumerable<UzduotisDto>> Handle(GetAllUzduotysQuery request)
+    public async Task<List<UzduotisDto>> Handle(GetAllUzduotysQuery request)
     {
-        var tasks = await _repo.GetAllAsync();
+        var list = await _repo.GetAllAsync();
 
-        return tasks.Select(t => new UzduotisDto(
-            t.Id,
-            t.Title.Value,
-            t.Description,
-            t.StatusId,
-            t.UserId,
-            t.CreatedAt,
-            t.UpdatedAt
-        ));
+        return list.Select(u => new UzduotisDto(
+                u.Id,
+                u.TitleValue,
+                u.Description,
+                u.StatusId,
+                u.UserProfileId,
+                u.CreatedAt,
+                u.UpdatedAt
+            ))
+            .ToList();
     }
 }

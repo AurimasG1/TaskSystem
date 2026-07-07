@@ -1,0 +1,3 @@
+namespace TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserProfileId;
+
+public record GetLastUzduotisByUserProfileIdQuery(int UserProfileId);

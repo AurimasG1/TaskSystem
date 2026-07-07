@@ -1,70 +1,59 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskSystem.Application.Commands.Uzduotys.DeleteUzduotis;
-using TaskSystem.Application.Commands.Uzduotys.ResetLastUzduotis;
-using TaskSystem.Application.Queries.Uzduotys.GetAllUzduotys;
-using TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserId;
-using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserEmail;
-using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserId;
+using TaskSystem.Application.Commands.Uzduotys.ResetLast;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisDelete;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisResetLast;
+using TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserProfileId;
+using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserProfileId;
 
 namespace TaskSystem.API.Controllers;
 
-[Authorize(Roles = "admin")]
 [ApiController]
 [Route("api/admin/uzduotys")]
 public class AdminUzduotisController : ControllerBase
 {
-    private readonly GetAllUzduotysHandler _getAll;
-    private readonly GetUzduotysByUserIdHandler _getByUserId;
-    private readonly GetUzduotysByUserEmailHandler _getByEmail;
-    private readonly GetLastUzduotisByUserIdHandler _getLast;
-    private readonly ResetLastUzduotisHandler _reset;
-    private readonly DeleteUzduotisHandler _delete;
-    private readonly AdminDeleteUzduotisHandler _adminDelete;
+    private readonly GetUzduotysByUserProfileIdHandler _getAll;
+    private readonly GetLastUzduotisByUserProfileIdHandler _getLast;
+    private readonly UzduotisResetLastHandler _resetLast;
+    private readonly UzduotisAdminDeleteHandler _delete;
 
     public AdminUzduotisController(
-        GetAllUzduotysHandler getAll,
-        GetUzduotysByUserIdHandler getByUserId,
-        GetUzduotysByUserEmailHandler getByEmail,
-        GetLastUzduotisByUserIdHandler getLast,
-        ResetLastUzduotisHandler reset,
-        DeleteUzduotisHandler delete,
-        AdminDeleteUzduotisHandler adminDelete
+        GetUzduotysByUserProfileIdHandler getAll,
+        GetLastUzduotisByUserProfileIdHandler getLast,
+        UzduotisResetLastHandler resetLast,
+        UzduotisAdminDeleteHandler delete
     )
     {
         _getAll = getAll;
-        _getByUserId = getByUserId;
-        _getByEmail = getByEmail;
         _getLast = getLast;
-        _reset = reset;
+        _resetLast = resetLast;
         _delete = delete;
-        _adminDelete = adminDelete;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll() =>
-        Ok(await _getAll.Handle(new GetAllUzduotysQuery()));
-
-    [HttpGet("user/{userId:int}")]
-    public async Task<IActionResult> GetByUserId(int userId) =>
-        Ok(await _getByUserId.Handle(new GetUzduotysByUserIdQuery(userId)));
-
-    [HttpGet("email/{email}")]
-    public async Task<IActionResult> GetByEmail(string email) =>
-        Ok(await _getByEmail.Handle(new GetUzduotysByUserEmailQuery(email)));
-
-    [HttpGet("last/{userId:int}")]
-    public async Task<IActionResult> GetLast(int userId) =>
-        Ok(await _getLast.Handle(new GetLastUzduotisByUserIdQuery(userId)));
-
-    [HttpPost("reset-last/{userId:int}")]
-    public async Task<IActionResult> ResetLast(int userId) =>
-        Ok(await _reset.Handle(new ResetLastUzduotisCommand(userId)));
-
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    [HttpGet("{userProfileId:int}")]
+    public async Task<IActionResult> GetAll(int userProfileId)
     {
-        await _adminDelete.Handle(new AdminDeleteUzduotisCommand(id));
+        var result = await _getAll.Handle(new GetUzduotysByUserProfileIdQuery(userProfileId));
+        return Ok(result);
+    }
+
+    [HttpGet("{userProfileId:int}/last")]
+    public async Task<IActionResult> GetLast(int userProfileId)
+    {
+        var result = await _getLast.Handle(new GetLastUzduotisByUserProfileIdQuery(userProfileId));
+        return Ok(result);
+    }
+
+    [HttpPost("{userProfileId:int}/reset-last")]
+    public async Task<IActionResult> ResetLast(int userProfileId)
+    {
+        var result = await _resetLast.Handle(new UzduotisResetLastCommand(userProfileId));
+        return Ok(result);
+    }
+
+    [HttpDelete("{taskId:int}")]
+    public async Task<IActionResult> Delete(int taskId)
+    {
+        await _delete.Handle(new UzduotisAdminDeleteCommand(taskId));
         return NoContent();
     }
 }

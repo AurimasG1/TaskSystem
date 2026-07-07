@@ -1,7 +1,7 @@
 using FluentValidation;
-using TaskSystem.Application.Commands.Users.LoginUser;
+using TaskSystem.Application.Commands.Auth.AuthLogin;
 
-public class LoginUserCommandValidator : AbstractValidator<LoginUserCommand>
+public class LoginUserCommandValidator : AbstractValidator<AuthLoginCommand>
 {
     public LoginUserCommandValidator()
     {

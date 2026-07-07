@@ -1,26 +1,31 @@
-using TaskSystem.Application.DTO.Users;
-using TaskSystem.Domain.Exceptions;
+using TaskSystem.Application.DTO.Responses.Users;
+using TaskSystem.Application.Queries.Users.GetUserByEmail;
 using TaskSystem.Domain.Interfaces;
 
-namespace TaskSystem.Application.Queries.Users.GetUserByEmail;
+namespace TaskSystem.Application.Queries.Users;
 
 public class GetUserByEmailHandler
 {
-    private readonly IUserRepository _userRepo;
+    private readonly IUserRepository _repo;
 
-    public GetUserByEmailHandler(IUserRepository userRepo)
+    public GetUserByEmailHandler(IUserRepository repo)
     {
-        _userRepo = userRepo;
+        _repo = repo;
     }
 
     public async Task<UserDto> Handle(GetUserByEmailQuery request)
     {
-        // 1. Load user (no tracking)
         var user =
-            await _userRepo.GetByEmailAsync(request.Email)
-            ?? throw new UserNotFoundException(request.Email);
+            await _repo.GetByEmailAsync(request.Email)
+            ?? throw new Exception($"User with email {request.Email} not found.");
 
-        // 2. Return DTO
-        return new UserDto(user.Id, user.Email.Value, user.UserName, user.Role);
+        return new UserDto(
+            UserId: user.Id,
+            ProfileId: user.Profile.Id,
+            FirstName: user.Profile.FirstName,
+            LastName: user.Profile.LastName,
+            Email: user.EmailValue,
+            Role: user.Profile.Role
+        );
     }
 }

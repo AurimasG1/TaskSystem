@@ -9,9 +9,11 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options) { }
 
-    public DbSet<Uzduotis> Uzduotys => Set<Uzduotis>();
-    public DbSet<UzduotisStatus> UzduotisStatuses => Set<UzduotisStatus>();
-    public DbSet<User> Users => Set<User>();
+    public DbSet<Uzduotis> Uzduotys { get; set; }
+    public DbSet<UzduotisStatus> UzduotisStatuses { get; set; }
+    public DbSet<User> Users { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<UserProfile> UserProfiles { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,5 +35,11 @@ public class AppDbContext : DbContext
             .Property<Email>("_email")
             .HasConversion(v => v.Value, v => Email.Create(v))
             .HasColumnName("Email");
+        modelBuilder
+            .Entity<User>()
+            .HasOne(u => u.Profile)
+            .WithOne(p => p.User)
+            .HasForeignKey<UserProfile>(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

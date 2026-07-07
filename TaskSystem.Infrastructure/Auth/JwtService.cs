@@ -20,18 +20,22 @@ public class JwtService : IJwtService
 
     public string GenerateAccessToken(User user)
     {
+        var issuer = _config["Jwt:Issuer"];
+
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email.Value),
+            new Claim("profileId", user.Profile.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.EmailValue),
             new Claim(ClaimTypes.Role, user.Role),
+            new Claim("iss", issuer!),
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
+            issuer: issuer,
             audience: null,
             claims: claims,
             expires: DateTime.UtcNow.AddHours(2),

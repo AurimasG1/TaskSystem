@@ -1,13 +1,16 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskSystem.Application.Commands.Uzduotys.CreateUzduotis;
-using TaskSystem.Application.Commands.Uzduotys.DeleteUzduotis;
-using TaskSystem.Application.Commands.Uzduotys.UpdateUzduotis;
-using TaskSystem.Application.DTO.Uzduotys;
-using TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserId;
+using TaskSystem.Application.Commands.Uzduotys.ResetLast;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisCreate;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisDelete;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisResetLast;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisUpdate;
+using TaskSystem.Application.Common;
+using TaskSystem.Application.DTO.Requests.Uzduotys;
+using TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserProfileId;
 using TaskSystem.Application.Queries.Uzduotys.GetUzduotisById;
-using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserId;
+using TaskSystem.Application.Queries.Uzduotys.GetUzduotysByUserProfileId;
 
 namespace TaskSystem.API.Controllers;
 
@@ -16,74 +19,104 @@ namespace TaskSystem.API.Controllers;
 [Route("api/user/uzduotys")]
 public class UserUzduotisController : ControllerBase
 {
-    private readonly CreateUzduotisHandler _create;
-    private readonly UpdateUzduotisHandler _update;
-    private readonly DeleteUzduotisHandler _delete;
+    private readonly UzduotisCreateHandler _create;
+    private readonly UzduotisUpdateHandler _update;
+    private readonly UzduotisDeleteHandler _delete;
     private readonly GetUzduotisByIdHandler _getById;
-    private readonly GetUzduotysByUserIdHandler _getByUserId;
-    private readonly GetLastUzduotisByUserIdHandler _getLast;
+    private readonly GetUzduotysByUserProfileIdHandler _getByProfile;
+    private readonly GetLastUzduotisByUserProfileIdHandler _getLast;
+    private readonly UzduotisResetLastHandler _resetLast;
 
     public UserUzduotisController(
-        CreateUzduotisHandler create,
-        UpdateUzduotisHandler update,
-        DeleteUzduotisHandler delete,
+        UzduotisCreateHandler create,
+        UzduotisUpdateHandler update,
+        UzduotisDeleteHandler delete,
         GetUzduotisByIdHandler getById,
-        GetUzduotysByUserIdHandler getByUserId,
-        GetLastUzduotisByUserIdHandler getLast
+        GetUzduotysByUserProfileIdHandler getByProfile,
+        GetLastUzduotisByUserProfileIdHandler getLast,
+        UzduotisResetLastHandler resetLast
     )
     {
         _create = create;
         _update = update;
         _delete = delete;
         _getById = getById;
-        _getByUserId = getByUserId;
+        _getByProfile = getByProfile;
         _getLast = getLast;
+        _resetLast = resetLast;
     }
 
-    private int UserId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    private int UserProfileId => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
+    // POST /api/user/uzduotys
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] UzduotisRequestDto dto)
+    public async Task<IActionResult> Create([FromBody] UzduotisCreateRequest dto)
     {
-        var command = new CreateUzduotisCommand(dto.Title, dto.Description, UserId);
+        var command = new UzduotisCreateCommand(dto.Title, dto.Description, UserProfileId);
         var created = await _create.Handle(command);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
+    // GET /api/user/uzduotys/my
     [HttpGet("my")]
-    public async Task<IActionResult> GetMy() =>
-        Ok(await _getByUserId.Handle(new GetUzduotysByUserIdQuery(UserId)));
+    public async Task<IActionResult> GetMy()
+    {
+        var result = await _getByProfile.Handle(new GetUzduotysByUserProfileIdQuery(UserProfileId));
 
+        return Ok(result);
+    }
+
+    // GET /api/user/uzduotys/{id}
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
         var item = await _getById.Handle(new GetUzduotisByIdQuery(id));
-        if (item.UserId != UserId)
-            return Forbid();
+
+        if (item.UserProfileId != UserProfileId)
+            return Forbid("Not your task");
+
         return Ok(item);
     }
 
+    // PUT /api/user/uzduotys/{id}
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UzduotisUpdateRequestDto dto)
+    public async Task<IActionResult> Update(int id, [FromBody] UzduotisUpdateRequest dto)
     {
-        var command = new UpdateUzduotisCommand(
+        var command = new UzduotisUpdateCommand(
             id,
-            dto.Title,
-            dto.Description,
-            dto.StatusId,
-            UserId
+            Optional<string>.FromNullable(dto.Title),
+            Optional<string>.FromNullable(dto.Description),
+            Optional<int>.FromNullable(dto.StatusId),
+            UserProfileId
         );
-        return Ok(await _update.Handle(command));
+
+        var updated = await _update.Handle(command);
+        return Ok(updated);
     }
 
+    // DELETE /api/user/uzduotys/{id}
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        await _delete.Handle(new DeleteUzduotisCommand(id, UserId));
+        await _delete.Handle(new UzduotisDeleteCommand(id, UserProfileId));
         return NoContent();
     }
 
+    // GET /api/user/uzduotys/last
     [HttpGet("last")]
-    public async Task<IActionResult> GetLast() =>
-        Ok(await _getLast.Handle(new GetLastUzduotisByUserIdQuery(UserId)));
+    public async Task<IActionResult> GetLast()
+    {
+        var result = await _getLast.Handle(new GetLastUzduotisByUserProfileIdQuery(UserProfileId));
+
+        return Ok(result);
+    }
+
+    // POST /api/user/uzduotys/reset-last
+    [HttpPost("reset-last")]
+    public async Task<IActionResult> ResetLast()
+    {
+        var result = await _resetLast.Handle(new UzduotisResetLastCommand(UserProfileId));
+
+        return Ok(result);
+    }
 }

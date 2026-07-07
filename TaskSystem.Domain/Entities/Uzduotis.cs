@@ -11,14 +11,15 @@ namespace TaskSystem.Domain.Entities
         public string? Description { get; set; }
         public int StatusId { get; set; }
         public UzduotisStatus Status { get; set; } = null!;
-        public int UserId { get; set; }
-        public User User { get; set; } = null!;
+        public int UserProfileId { get; set; }
+        public UserProfile UserProfile { get; set; } = null!;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public void SetTitle(string title)
         {
+            ArgumentNullException.ThrowIfNull(title);
             _title = TaskTitle.Create(title);
             UpdatedAt = DateTime.UtcNow;
         }
@@ -27,6 +28,14 @@ namespace TaskSystem.Domain.Entities
         {
             get => _title.Value;
             private set => _title = TaskTitle.Create(value);
+        }
+
+        public void Reset()
+        {
+            SetTitle("(reset) " + TitleValue);
+            Description = null;
+            StatusId = 1;
+            UpdatedAt = DateTime.UtcNow;
         }
     }
 }

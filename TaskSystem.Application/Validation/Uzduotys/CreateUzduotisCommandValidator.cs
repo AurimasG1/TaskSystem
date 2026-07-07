@@ -1,9 +1,9 @@
 using FluentValidation;
-using TaskSystem.Application.Commands.Uzduotys.CreateUzduotis;
+using TaskSystem.Application.Commands.Uzduotys.UzduotisCreate;
 
 namespace TaskSystem.Application.Validation.Uzduotys;
 
-public class CreateUzduotisCommandValidator : AbstractValidator<CreateUzduotisCommand>
+public class CreateUzduotisCommandValidator : AbstractValidator<UzduotisCreateCommand>
 {
     public CreateUzduotisCommandValidator()
     {
@@ -11,6 +11,6 @@ public class CreateUzduotisCommandValidator : AbstractValidator<CreateUzduotisCo
 
         RuleFor(x => x.Description).MaximumLength(500);
 
-        RuleFor(x => x.UserId).GreaterThan(0);
+        RuleFor(x => x.UserProfileId).GreaterThan(0);
     }
 }

@@ -1,4 +1,4 @@
-using TaskSystem.Application.DTO.Uzduotys;
+using TaskSystem.Application.DTO.Responses.Uzduotys;
 using TaskSystem.Domain.Interfaces;
 
 namespace TaskSystem.Application.Queries.Uzduotys.GetTopUzduotys;
@@ -22,7 +22,7 @@ public class GetTopUzduotysHandler
                 t.Title.Value,
                 t.Description,
                 t.StatusId,
-                t.UserId,
+                t.UserProfileId,
                 t.CreatedAt,
                 t.UpdatedAt
             ))
