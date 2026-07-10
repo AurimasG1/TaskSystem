@@ -1,22 +1,27 @@
-version: '3.9'
-
 services:
   mysql:
-    image: mysql:8
+    image: mysql:8.0
     container_name: tasksystem-mysql
-    restart: always
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: tasksystem
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-tasksystem}
+      MYSQL_USER: ${MYSQL_USER:-tasksystem_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - '3306:3306'
+      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"
+        ]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
 
   migrate:
     build:
@@ -26,27 +31,30 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      ConnectionStrings__DefaultConnection: 'server=mysql;port=3306;database=tasksystem;user=root;password=root'
-      Jwt__Key: 'SUPER_SECRET_KEY_123'
-      Jwt__Issuer: 'TaskSystem'
-    command: ['dotnet', 'TaskSystem.API.dll', '--migrate']
+      ConnectionStrings__DefaultConnection: "server=mysql;port=3306;database=${MYSQL_DATABASE:-tasksystem};user=${MYSQL_USER:-tasksystem_app};password=${MYSQL_PASSWORD}"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:-TaskSystemAPI}
+    command: ["dotnet", "TaskSystem.API.dll", "--migrate"]
+    restart: "no"
 
   api:
     build:
       context: .
       dockerfile: TaskSystem.API/Dockerfile
+    container_name: tasksystem-api
+    restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
     environment:
-      ASPNETCORE_ENVIRONMENT: 'Development'
-      ConnectionStrings__DefaultConnection: 'server=mysql;port=3306;database=tasksystem;user=root;password=root'
-      Jwt__Key: 'SUPER_SECRET_KEY_123'
-      Jwt__Issuer: 'TaskSystem'
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "server=mysql;port=3306;database=${MYSQL_DATABASE:-tasksystem};user=${MYSQL_USER:-tasksystem_app};password=${MYSQL_PASSWORD}"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:-TaskSystemAPI}
     ports:
-      - '8080:8080'
+      - "8080:8080"
 
 volumes:
   mysql_data:

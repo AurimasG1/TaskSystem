@@ -12,8 +12,8 @@ using TaskSystem.Application.Commands.Admin;
 using TaskSystem.Application.Commands.Auth.AuthLogin;
 using TaskSystem.Application.Commands.Auth.AuthRefreshToken;
 using TaskSystem.Application.Commands.Auth.AuthRegister;
-using TaskSystem.Application.Commands.Users.DeleteUser;
 using TaskSystem.Application.Commands.Users.UserChangePassword;
+using TaskSystem.Application.Commands.Users.UserDelete;
 using TaskSystem.Application.Commands.Users.UserRegister;
 using TaskSystem.Application.Commands.Users.UserUpdate;
 using TaskSystem.Application.Commands.Uzduotys.ResetLast;
@@ -132,13 +132,13 @@ MapsterConfig.RegisterMappings();
 builder.Services.AddSingleton(TypeAdapterConfig.GlobalSettings);
 builder.Services.AddScoped<IMapper, ServiceMapper>();
 
-builder.Services.AddScoped<UserRegisterHandler>();
-builder.Services.AddScoped<AuthLoginHandler>();
 builder.Services.AddScoped<AuthRegisterHandler>();
-builder.Services.AddScoped<UserAdminUpdateHandler>();
+builder.Services.AddScoped<AuthLoginHandler>();
+builder.Services.AddScoped<UserRegisterHandler>();
 builder.Services.AddScoped<UserUpdateHandler>();
-builder.Services.AddScoped<DeleteUserHandler>();
+builder.Services.AddScoped<UserDeleteHandler>();
 builder.Services.AddScoped<UserChangePasswordHandler>();
+builder.Services.AddScoped<UserAdminUpdateHandler>();
 
 builder.Services.AddScoped<UzduotisCreateHandler>();
 builder.Services.AddScoped<UzduotisUpdateHandler>();
@@ -155,19 +155,19 @@ builder.Services.AddScoped<GetLastUzduotisByUserProfileIdHandler>();
 builder.Services.AddScoped<GetAllUzduotysHandler>();
 builder.Services.AddScoped<GetUzduotysByUserEmailHandler>();
 
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
-builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IUzduotisRepository, UzduotisRepository>();
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddScoped<AdminPromoteWithTokenHandler>();
 builder.Services.AddScoped<IAdminPromotionTokenRepository, AdminPromotionTokenRepository>();
+builder.Services.AddScoped<AdminPromoteWithTokenHandler>();
 builder.Services.AddScoped<AdminPromotionTokenGenerator>();
-builder.Services.AddHostedService<TokenCleanupService>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
 builder.Services.AddScoped<PasswordHasher<User>>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<AuthRefreshTokenHandler>();
+builder.Services.AddHostedService<TokenCleanupService>();
 
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserCommandValidator>();
 builder.Services.AddFluentValidationAutoValidation();

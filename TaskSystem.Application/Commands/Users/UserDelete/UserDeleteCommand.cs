@@ -1,3 +1,3 @@
-namespace TaskSystem.Application.Commands.Users.DeleteUser;
+namespace TaskSystem.Application.Commands.Users.UserDelete;
 
-public record DeleteUserCommand(int UserId);
+public record UserDeleteCommand(int UserId);

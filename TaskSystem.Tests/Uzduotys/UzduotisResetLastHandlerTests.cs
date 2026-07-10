@@ -1,7 +1,6 @@
 using Moq;
 using TaskSystem.Application.Commands.Uzduotys.ResetLast;
 using TaskSystem.Application.Commands.Uzduotys.UzduotisResetLast;
-using TaskSystem.Application.DTO.Responses.Uzduotys;
 using TaskSystem.Domain.Entities;
 using TaskSystem.Domain.Exceptions;
 using TaskSystem.Domain.Interfaces;
@@ -18,41 +17,118 @@ public class UzduotisResetLastHandlerTests
     {
         _repoMock = new Mock<IRepository<Uzduotis>>();
         _taskRepoMock = new Mock<IUzduotisRepository>();
+
         _handler = new UzduotisResetLastHandler(_repoMock.Object, _taskRepoMock.Object);
     }
 
     [Fact]
-    public async Task Handle_ResetsLastTask()
+    public async Task Handle_WhenLastTaskExists_ResetsTaskAndReturnsMappedDto()
     {
+        // Arrange
+        const int expectedTaskId = 99;
+        const int expectedUserProfileId = 10;
+        const string originalTitle = "Title";
+        const string expectedTitle = "(reset) Title";
+        const int originalStatusId = 3;
+        const int expectedStatusId = 1;
+
+        var expectedCreatedAt = new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc);
+
+        var originalUpdatedAt = new DateTime(2026, 7, 2, 10, 0, 0, DateTimeKind.Utc);
+
         var task = new Uzduotis
         {
-            Id = 99,
-            UserProfileId = 10,
-            Description = "Desc",
-            StatusId = 3,
-            CreatedAt = DateTime.UtcNow.AddDays(-1),
-            UpdatedAt = DateTime.UtcNow.AddDays(-1),
+            Id = expectedTaskId,
+            UserProfileId = expectedUserProfileId,
+            Description = "Description",
+            StatusId = originalStatusId,
+            CreatedAt = expectedCreatedAt,
+            UpdatedAt = originalUpdatedAt,
         };
-        task.SetTitle("Title");
 
-        _taskRepoMock.Setup(r => r.GetLastByUserProfileIdAsync(10)).ReturnsAsync(task);
+        task.SetTitle(originalTitle);
 
-        _repoMock.Setup(r => r.SaveChangesAsync());
+        /*
+         * SetTitle() pats pakeičia UpdatedAt, todėl po SetTitle()
+         * grąžiname testui reikalingą seną reikšmę.
+         */
+        task.UpdatedAt = originalUpdatedAt;
 
-        var command = new UzduotisResetLastCommand(10);
+        _taskRepoMock
+            .Setup(repo => repo.GetLastByUserProfileIdForUpdateAsync(expectedUserProfileId))
+            .ReturnsAsync(task);
 
-        UzduotisDto result = await _handler.Handle(command);
+        _repoMock.Setup(repo => repo.SaveChangesAsync()).Returns(Task.CompletedTask);
 
-        Assert.Equal(1, result.StatusId); // Reset() sets default status
+        var command = new UzduotisResetLastCommand(expectedUserProfileId);
+
+        var beforeExecution = DateTime.UtcNow;
+
+        // Act
+        var result = await _handler.Handle(command);
+
+        var afterExecution = DateTime.UtcNow;
+
+        // Assert: returned DTO
+        Assert.Equal(expectedTaskId, result.Id);
+        Assert.Equal(expectedUserProfileId, result.UserProfileId);
+        Assert.Equal(expectedTitle, result.Title);
+        Assert.Null(result.Description);
+        Assert.Equal(expectedStatusId, result.StatusId);
+        Assert.Equal(expectedCreatedAt, result.CreatedAt);
+
+        Assert.InRange(result.UpdatedAt, beforeExecution, afterExecution);
+
+        Assert.True(result.UpdatedAt > originalUpdatedAt);
+
+        // Assert: modified entity
+        Assert.Equal(expectedTitle, task.TitleValue);
+        Assert.Null(task.Description);
+        Assert.Equal(expectedStatusId, task.StatusId);
+        Assert.Equal(expectedCreatedAt, task.CreatedAt);
+
+        Assert.InRange(task.UpdatedAt, beforeExecution, afterExecution);
+
+        // DTO turi atspindėti tą pačią entity būseną.
+        Assert.Equal(task.TitleValue, result.Title);
+        Assert.Equal(task.Description, result.Description);
+        Assert.Equal(task.StatusId, result.StatusId);
+        Assert.Equal(task.UpdatedAt, result.UpdatedAt);
+
+        // Assert: dependency interactions
+        _taskRepoMock.Verify(
+            repo => repo.GetLastByUserProfileIdForUpdateAsync(expectedUserProfileId),
+            Times.Once
+        );
+
+        _repoMock.Verify(repo => repo.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_Throws_WhenNoTasks()
+    public async Task Handle_WhenLastTaskDoesNotExist_ThrowsUzduotisNotFoundException()
     {
-        _taskRepoMock.Setup(r => r.GetLastByUserProfileIdAsync(10)).ReturnsAsync((Uzduotis?)null);
+        // Arrange
+        const int userProfileId = 10;
 
-        var command = new UzduotisResetLastCommand(10);
+        _taskRepoMock
+            .Setup(repo => repo.GetLastByUserProfileIdForUpdateAsync(userProfileId))
+            .ReturnsAsync((Uzduotis?)null);
 
-        await Assert.ThrowsAsync<UzduotisNotFoundException>(() => _handler.Handle(command));
+        var command = new UzduotisResetLastCommand(userProfileId);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<UzduotisNotFoundException>(() =>
+            _handler.Handle(command)
+        );
+
+        // Assert
+        Assert.Equal($"UserProfile {userProfileId} has no tasks.", exception.Message);
+
+        _taskRepoMock.Verify(
+            repo => repo.GetLastByUserProfileIdForUpdateAsync(userProfileId),
+            Times.Once
+        );
+
+        _repoMock.Verify(repo => repo.SaveChangesAsync(), Times.Never);
     }
 }

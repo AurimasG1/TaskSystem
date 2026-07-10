@@ -2,18 +2,18 @@ using TaskSystem.Domain.Entities;
 using TaskSystem.Domain.Exceptions;
 using TaskSystem.Domain.Interfaces;
 
-namespace TaskSystem.Application.Commands.Users.DeleteUser;
+namespace TaskSystem.Application.Commands.Users.UserDelete;
 
-public class DeleteUserHandler
+public class UserDeleteHandler
 {
     private readonly IUserRepository _userRepo;
 
-    public DeleteUserHandler(IUserRepository userRepo, IRepository<User> repo)
+    public UserDeleteHandler(IUserRepository userRepo, IRepository<User> repo)
     {
         _userRepo = userRepo;
     }
 
-    public async Task Handle(DeleteUserCommand request)
+    public async Task Handle(UserDeleteCommand request)
     {
         // 1. Load user with tracking
         var user =

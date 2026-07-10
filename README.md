@@ -1,270 +1,257 @@
-# 🚀 TaskSystem – Užduočių valdymo REST API
+# TaskSystem
 
-## 🟦 1. Kaip paleisti projektą lokaliai
+TaskSystem is a task management REST API built with ASP.NET Core. It demonstrates layered application design, JWT-based authentication, refresh token rotation, role-based authorization, validation, object mapping, background processing, automated database migrations, and containerized local development.
 
-## 1.1. Klonuoti repozitoriją
+## Key Features
+
+- User registration, login, and JWT authentication
+- Refresh token rotation
+- Role-based authorization with `onboarding`, `user`, and `admin` roles
+- User onboarding and profile management
+- User-scoped task creation, retrieval, update, deletion, and latest-task operations
+- Administrative user and task management
+- Admin promotion tokens
+- Separate administrative CLI
+- FluentValidation request validation
+- Mapster object mapping
+- Global exception and validation middleware
+- Background cleanup of expired tokens
+- MySQL persistence through Entity Framework Core
+- Swagger/OpenAPI documentation with JWT support
+- Health check endpoint
+- Unit tests with xUnit, Moq, and EF Core InMemory
+- Docker Compose environment for the API, migrations, and MySQL
+
+## Technology Stack
+
+| Area | Technologies |
+|---|---|
+| Backend | C#, .NET 10, ASP.NET Core Web API |
+| Data access | Entity Framework Core 9, Pomelo MySQL provider |
+| Database | MySQL 8 |
+| Authentication | JWT bearer authentication, refresh token rotation |
+| Validation and mapping | FluentValidation, Mapster |
+| API documentation | Swagger / OpenAPI |
+| Testing | xUnit, Moq, EF Core InMemory |
+| Infrastructure | Docker, Docker Compose, ASP.NET Core Health Checks |
+
+## Architecture
+
+The solution separates HTTP concerns, application use cases, domain models, and infrastructure implementations.
+
+```mermaid
+flowchart LR
+    Client[API Client] --> API[TaskSystem.API]
+    API --> Application[TaskSystem.Application]
+    API --> Infrastructure[TaskSystem.Infrastructure]
+    Application --> Domain[TaskSystem.Domain]
+    Infrastructure --> Application
+    Infrastructure --> Domain
+    Infrastructure --> MySQL[(MySQL)]
+    AdminCLI[TaskSystem.AdminCli] --> Infrastructure
+```
+
+### Projects
+
+- **TaskSystem.API** — controllers, authentication, authorization, Swagger, middleware, dependency registration, and HTTP configuration.
+- **TaskSystem.Application** — commands, queries, handlers, DTOs, validation, mapping, and application-level abstractions.
+- **TaskSystem.Domain** — domain entities and interfaces.
+- **TaskSystem.Infrastructure** — Entity Framework Core, repositories, migrations, authentication services, admin services, and background services.
+- **TaskSystem.AdminCli** — command-line utility for administrative operations.
+- **TaskSystem.Tests** — unit tests for application and domain behavior.
+
+## Security Model
+
+- Access to protected endpoints requires a valid JWT access token.
+- Authorization rules are enforced through the `onboarding`, `user`, and `admin` roles.
+- User operations are restricted to the authenticated user's resources.
+- Refresh tokens are rotated instead of being reused indefinitely.
+- Expired tokens are removed by a hosted background service.
+- Local secrets are stored through .NET User Secrets.
+- Container secrets are supplied through environment variables.
+- Real credentials must not be committed to source control.
+
+## Getting Started
+
+### Prerequisites
+
+Install:
+
+- .NET 10 SDK
+- Docker Desktop, or a local MySQL 8 server
+- Entity Framework Core CLI tools for local migration commands
+
+Clone the repository:
 
 ```bash
 git clone https://github.com/AurimasG1/TaskSystem.git
-cd TaskSystem/TaskSystem.API
+cd TaskSystem
 ```
 
-## 1.2. Paleisti MySQL duomenų bazę (Docker)
+## Run with Docker Compose
 
+Copy the environment template:
+
+### PowerShell
+
+```powershell
+Copy-Item .env.example .env
 ```
-docker run --name mysql8 \
- -e MYSQL_ROOT_PASSWORD=root \
- -e MYSQL_DATABASE=tasksystem \
- -p 3306:3306 \
- -d mysql:8
-```
 
-arba
-
-## 🐳 Projekto paleidimas naudojant Docker Compose
-
-Projektą galima paleisti vienu mygtuku naudojant `docker-compose.yml`, kuris startuoja:
-
-- MySQL 8 duomenų bazę
-- TaskSystem.API projektą
-- automatiškai perduoda konfigūracijos kintamuosius (JWT Key, ConnectionString)
-
-### Paleidimas
+### Bash
 
 ```bash
-docker compose up -d
+cp .env.example .env
 ```
 
-## 1.3. Nustatyti User Secrets (būtina!)
+Open `.env` and replace the example passwords and JWT key.
 
-```
-dotnet user-secrets init
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "server=localhost;port=3306;database=tasksystem;user=root;password=root"
-dotnet user-secrets set "Jwt:Key" "ĮRAŠYK_SAVO_SLAPTA_RAKTĄ"
-```
+Start MySQL, run the database migrations, and launch the API:
 
-Patikrinti
-
-```
-dotnet user-secrets list
+```bash
+docker compose up --build
 ```
 
-## 1.4. Update database
+The API will be available at:
 
-```
-cd TaskSystem/
-dotnet ef database update -p TaskSystem.Data/ -s TaskSystem.API/
-```
+- Swagger UI: `http://localhost:8080/swagger`
+- Health check: `http://localhost:8080/health`
 
-## 1.5. Paleisti API
+Stop the environment:
 
-```
-cd TaskSystem/TaskSystem.API/
-dotnet run
+```bash
+docker compose down
 ```
 
-API bus pasiekiamas per localhost su jusu nustatytu portu
-pvz
+Remove the database volume as well:
 
+```bash
+docker compose down -v
 ```
-https://localhost:5263/swagger
+
+## Run Locally Without Docker
+
+Start a MySQL 8 instance and create the `tasksystem` database.
+
+Restore dependencies:
+
+```bash
+dotnet restore
 ```
 
-# 2. REST API endpoint'ai
+Configure local secrets from the repository root:
 
-## 2.1. Autentifikacija (be JWT)
-
-| Metodas | Endpoint             | Aprašymas                          |
-| ------- | -------------------- | ---------------------------------- |
-| POST    | `/api/auth/register` | Registracija                       |
-| POST    | `/api/auth/login`    | Prisijungimas (grąžina JWT tokeną) |
-
-## 2.2. Vartoto (User) endpoint'ai
-
-Reikalauja JWT tokeno
-
-| Metodas | Endpoint                  | Aprašymas                           |
-| ------- | ------------------------- | ----------------------------------- |
-| POST    | `/api/user/uzduotys`      | Sukuria naują užduotį               |
-| GET     | `/api/user/uzduotys/my`   | Grąžina visas naudotojo užduotis    |
-| GET     | `/api/user/uzduotys/last` | Grąžina paskutinę naudotojo užduotį |
-| PUT     | `/api/user/uzduotys/{id}` | Atnaujina naudotojo užduotį         |
-| DELETE  | `/api/user/uzduotys/{id}` | Ištrina naudotojo užduotį           |
-
-## 2.3. Administratoriaus (Admin) endpoint’ai
-
-Reikalauja JWT tokeno ir rolės admin
-
-| Metodas | Endpoint                                  | Aprašymas                                      |
-| ------- | ----------------------------------------- | ---------------------------------------------- |
-| GET     | `/api/admin/uzduotys`                     | Grąžina visas užduotis                         |
-| GET     | `/api/admin/uzduotys/by-user/{userId}`    | Grąžina konkretaus naudotojo užduotis          |
-| GET     | `/api/admin/uzduotys/last/{userId}`       | Grąžina konkretaus naudotojo paskutinę užduotį |
-| PUT     | `/api/admin/uzduotys/reset-last/{userId}` | Atstato paskutinės užduoties įrašą             |
-
-# 3. Kaip paleisti vienetinius testus
-
-Testai yra projekte TaskSystem.Tests
-
+```bash
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "server=localhost;port=3306;database=tasksystem;user=YOUR_USER;password=YOUR_PASSWORD" --project TaskSystem.API
+dotnet user-secrets set "Jwt:Key" "REPLACE_WITH_A_LONG_RANDOM_SECRET" --project TaskSystem.API
+dotnet user-secrets set "Jwt:Issuer" "TaskSystemAPI" --project TaskSystem.API
 ```
+
+Apply database migrations:
+
+```bash
+dotnet ef database update --project TaskSystem.Infrastructure --startup-project TaskSystem.API
+```
+
+Run the API:
+
+```bash
+dotnet run --project TaskSystem.API
+```
+
+Development URLs:
+
+- Swagger UI: `https://localhost:7214/swagger`
+- Swagger UI: `http://localhost:5263/swagger`
+- Health check: `http://localhost:5263/health`
+
+## API Overview
+
+The complete and current endpoint list is available through Swagger.
+
+Main endpoint groups:
+
+| Group | Purpose |
+|---|---|
+| `/api/auth` | Registration, login, and refresh token operations |
+| `/api/user` | Authenticated user onboarding and profile operations |
+| `/api/user/uzduotys` | User task operations |
+| `/api/admin/users` | Administrative user management |
+| `/api/admin/uzduotys` | Administrative task management |
+| Admin promotion endpoints | Promotion token generation and redemption |
+
+To call protected endpoints in Swagger:
+
+1. Register or log in.
+2. Copy the returned access token.
+3. Select **Authorize**.
+4. Enter the token as `Bearer YOUR_ACCESS_TOKEN`.
+
+## Run Tests
+
+Run the complete test suite:
+
+```bash
 dotnet test
-
 ```
 
-Testuose naudojama:
+The test project uses:
 
-xUnit – testų framework
+- xUnit
+- Moq
+- EF Core InMemory
+- Coverlet collector
 
-Moq – repository imitavimui
+## Admin CLI
 
-EF Core InMemory – izoliuotam testavimui be tikros DB
+Create `TaskSystem.AdminCli/.env`:
 
-Testuojama:
+```env
+TASKSYSTEM_DB=server=localhost;port=3306;database=tasksystem;user=YOUR_USER;password=YOUR_PASSWORD
+```
 
-Užduoties validacija (Title privalomas)
+Promote a user by email:
 
-Paskutinės užduoties gavimas
+```bash
+dotnet run --project TaskSystem.AdminCli -- admin promote --email=user@example.com
+```
 
-UpdatedAt atnaujinimas
+Promote a user by ID:
 
-Repository metodų kvietimas (ResetLastUzduotisAsync)
+```bash
+dotnet run --project TaskSystem.AdminCli -- admin promote --userId=1
+```
 
-# 4. Saugumo taisyklės (Guard Rails)
+## Configuration
 
-Visi endpoint’ai, išskyrus /register ir /login, reikalauja JWT tokeno
+The API reads configuration from standard ASP.NET Core configuration sources.
 
-User gali valdyti tik savo užduotis
+Required values:
 
-Admin turi prieigą prie visų užduočių
+| Key | Purpose |
+|---|---|
+| `ConnectionStrings:DefaultConnection` | MySQL connection string |
+| `Jwt:Key` | JWT signing key |
+| `Jwt:Issuer` | Expected JWT issuer |
 
-API raktai ir DB slaptažodžiai nėra saugomi GitHub’e
+Environment variable equivalents:
 
-Jautri informacija perduodama per:
+```text
+ConnectionStrings__DefaultConnection
+Jwt__Key
+Jwt__Issuer
+```
 
-User Secrets (lokaliai)
+## Planned Improvements
 
-Environment Variables (production / Docker)
+- Structured logging with Serilog
+- API integration tests
+- GitHub Actions build and test workflow
+- Additional API documentation and usage examples
 
-appsettings.json saugo tik struktūrą, be slaptažodžių
+## Author
 
-.gitignore blokuoja:
+**Aurimas Gedvilas**
 
-secrets.json
-
-.env
-
-appsettings.Development.json
-
-## 🏗 Projekto architektūra
-
-Projektas sukurtas pagal **švarią sluoksninę architektūrą**, kuri užtikrina aiškų atsakomybės paskirstymą, lengvą testavimą ir gerą kodo palaikymą.
-
-### 🔹 1. API sluoksnis (`TaskSystem.API`)
-
-Atsakingas už:
-
-- HTTP užklausų priėmimą
-- REST endpoint’ų aprašymą
-- Modelių validaciją
-- Autentifikaciją ir autorizaciją (JWT)
-- Atsakymų formavimą
-
-Naudoja:
-
-- Controllerius (`AuthController`, `UserController`, `AdminController`)
-- `[ApiController]`, `[Authorize]`, `[AllowAnonymous]`
-
----
-
-### 🔹 2. Servisų sluoksnis (`TaskSystem.Services`)
-
-Atsakingas už:
-
-- verslo logiką
-- validaciją
-- darbo su repository koordinavimą
-- papildomas taisykles (pvz., naudotojas gali valdyti tik savo užduotis)
-
-Pavyzdžiai:
-
-- `UserService`
-- `UzduotisService`
-- `JwtService`
-
----
-
-### 🔹 3. Repository sluoksnis (`TaskSystem.Repositories`)
-
-Atsakingas už:
-
-- duomenų prieigą
-- CRUD operacijas
-- EF Core užklausas
-
-Pavyzdžiai:
-
-- `UserRepository`
-- `UzduotisRepository`
-
-Repository naudoja:
-
-- `AppDbContext`
-- EF Core 9
-- Pomelo MySQL provider
-
----
-
-### 🔹 4. Duomenų sluoksnis (`TaskSystem.Data`)
-
-Atsakingas už:
-
-- duomenų bazės kontekstą (`AppDbContext`)
-- DbSet’ų aprašymą
-- MySQL konfigūraciją
-
----
-
-### 🔹 5. Bendri modeliai (`TaskSystem.Common`)
-
-Atsakingi už:
-
-- DTO modelius
-- Entity modelius
-- Enum’us
-- Validacijos atributus
-
----
-
-### 📌 Architektūros principai
-
-- **Dependency Injection** naudojamas visur (services, repositories)
-- **Controlleriai neturi verslo logikos**
-- **Service sluoksnis neturi tiesioginės prieigos prie DB**
-- **Repository neturi verslo logikos**
-- **DTO atskirti nuo Entity**
-- **JWT autentifikacija ir rolėmis paremta autorizacija**
-- **User Secrets / Environment Variables** naudojami konfigūracijai
-
-Tokiu būdu projektas yra:
-
-- lengvai testuojamas
-- plečiamas
-- saugus
-- aiškiai struktūruotas
-
-## 🔐 Autentifikacija ir autorizacija
-
-Projektas naudoja **JWT (JSON Web Token)** autentifikaciją ir rolėmis paremtą autorizaciją.
-
----
-
-# 1. Autentifikacija (JWT)
-
-Autentifikacija vyksta per du endpoint’us:
-
-| Metodas | Endpoint             | Aprašymas                          |
-| ------- | -------------------- | ---------------------------------- |
-| POST    | `/api/auth/register` | Registracija                       |
-| POST    | `/api/auth/login`    | Prisijungimas (grąžina JWT tokeną) |
-
-Prisijungus, API grąžina JWT tokeną, kurį naudotojas turi pateikti `Authorization` header’yje:
+- GitHub: [AurimasG1](https://github.com/AurimasG1)
+- LinkedIn: [aurimas-gedvilas](https://www.linkedin.com/in/aurimas-gedvilas/)

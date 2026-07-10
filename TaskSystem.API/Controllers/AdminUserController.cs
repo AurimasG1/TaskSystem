@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskSystem.Application.Commands.Users.DeleteUser;
+using TaskSystem.Application.Commands.Users.UserDelete;
 using TaskSystem.Application.Commands.Users.UserUpdate;
 using TaskSystem.Application.Queries.Users;
 using TaskSystem.Application.Queries.Users.GetUserByEmail;
@@ -16,13 +16,13 @@ public class AdminUserController : ControllerBase
     private readonly GetUserByIdHandler _getById;
     private readonly GetUserByEmailHandler _getByEmail;
     private readonly UserAdminUpdateHandler _update;
-    private readonly DeleteUserHandler _delete;
+    private readonly UserDeleteHandler _delete;
 
     public AdminUserController(
         GetUserByIdHandler getById,
         GetUserByEmailHandler getByEmail,
         UserAdminUpdateHandler update,
-        DeleteUserHandler delete
+        UserDeleteHandler delete
     )
     {
         _getById = getById;
@@ -56,7 +56,7 @@ public class AdminUserController : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        await _delete.Handle(new DeleteUserCommand(id));
+        await _delete.Handle(new UserDeleteCommand(id));
         return NoContent();
     }
 }

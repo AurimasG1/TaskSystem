@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskSystem.Application.Commands.Users.DeleteUser;
 using TaskSystem.Application.Commands.Users.UserChangePassword;
+using TaskSystem.Application.Commands.Users.UserDelete;
 using TaskSystem.Application.Commands.Users.UserRegister;
 using TaskSystem.Application.Commands.Users.UserUpdate;
 using TaskSystem.Application.DTO.Requests.Users;
@@ -17,14 +17,14 @@ public class UserController : ControllerBase
 {
     private readonly GetUserByIdHandler _getById;
     private readonly UserUpdateHandler _update;
-    private readonly DeleteUserHandler _delete;
+    private readonly UserDeleteHandler _delete;
     private readonly UserChangePasswordHandler _changePassword;
     private readonly UserRegisterHandler _userRegisterHandler;
 
     public UserController(
         GetUserByIdHandler getById,
         UserUpdateHandler update,
-        DeleteUserHandler delete,
+        UserDeleteHandler delete,
         UserChangePasswordHandler changePassword,
         UserRegisterHandler userRegisterHandler
     )
@@ -66,7 +66,7 @@ public class UserController : ControllerBase
     [HttpDelete("me")]
     public async Task<IActionResult> DeleteMe()
     {
-        await _delete.Handle(new DeleteUserCommand(UserId));
+        await _delete.Handle(new UserDeleteCommand(UserId));
         return NoContent();
     }
 

@@ -1,0 +1,34 @@
+# Build
+bin/
+obj/
+out/
+publish/
+
+# User Secrets
+**/secrets.json
+
+# Environment files
+.env
+*.env
+!.env.example
+
+# Local app settings
+appsettings.Development.json
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+# Logs
+*.log
+
+# Docker overrides
+docker-compose.override.yml
+docker-compose.*.yml
+!docker-compose.yml
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,5 +1,4 @@
 using Moq;
-using TaskSystem.Application.DTO.Responses.Uzduotys;
 using TaskSystem.Application.Queries.Uzduotys.GetLastUzduotisByUserProfileId;
 using TaskSystem.Domain.Entities;
 using TaskSystem.Domain.Exceptions;
@@ -15,40 +14,81 @@ public class GetLastUzduotisByUserProfileIdHandlerTests
     public GetLastUzduotisByUserProfileIdHandlerTests()
     {
         _repoMock = new Mock<IUzduotisRepository>();
+
         _handler = new GetLastUzduotisByUserProfileIdHandler(_repoMock.Object);
     }
 
     [Fact]
-    public async Task Handle_ReturnsLastTask()
+    public async Task Handle_WhenTaskExists_ReturnsMappedTask()
     {
-        var task = new Uzduotis
+        // Arrange
+        const int expectedTaskId = 99;
+        const int expectedUserProfileId = 10;
+        const string expectedTitle = "Title";
+        const string expectedDescription = "Description";
+        const int expectedStatusId = 2;
+
+        var expectedCreatedAt = new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc);
+
+        var expectedUpdatedAt = new DateTime(2026, 7, 2, 12, 30, 0, DateTimeKind.Utc);
+
+        var uzduotis = new Uzduotis
         {
-            Id = 99,
-            UserProfileId = 10,
-            Description = "Desc",
-            StatusId = 2,
-            CreatedAt = DateTime.UtcNow.AddDays(-1),
-            UpdatedAt = DateTime.UtcNow.AddDays(-1),
+            Id = expectedTaskId,
+            UserProfileId = expectedUserProfileId,
+            Description = expectedDescription,
+            StatusId = expectedStatusId,
+            CreatedAt = expectedCreatedAt,
         };
-        task.SetTitle("Title");
 
-        _repoMock.Setup(r => r.GetLastByUserProfileIdAsync(10)).ReturnsAsync(task);
+        uzduotis.SetTitle(expectedTitle);
+        uzduotis.UpdatedAt = expectedUpdatedAt;
 
-        var query = new GetLastUzduotisByUserProfileIdQuery(10);
+        _repoMock
+            .Setup(repo => repo.GetLastByUserProfileIdAsync(expectedUserProfileId))
+            .ReturnsAsync(uzduotis);
 
-        UzduotisDto result = await _handler.Handle(query);
+        var query = new GetLastUzduotisByUserProfileIdQuery(expectedUserProfileId);
 
-        Assert.Equal(99, result.Id);
-        Assert.Equal("Title", result.Title);
+        // Act
+        var result = await _handler.Handle(query);
+
+        // Assert: returned DTO
+        Assert.Equal(expectedTaskId, result.Id);
+        Assert.Equal(expectedTitle, result.Title);
+        Assert.Equal(expectedDescription, result.Description);
+        Assert.Equal(expectedStatusId, result.StatusId);
+        Assert.Equal(expectedUserProfileId, result.UserProfileId);
+        Assert.Equal(expectedCreatedAt, result.CreatedAt);
+        Assert.Equal(expectedUpdatedAt, result.UpdatedAt);
+
+        // Assert: repository interaction
+        _repoMock.Verify(
+            repo => repo.GetLastByUserProfileIdAsync(expectedUserProfileId),
+            Times.Once
+        );
     }
 
     [Fact]
-    public async Task Handle_Throws_WhenNoTasks()
+    public async Task Handle_WhenTaskDoesNotExist_ThrowsUzduotisNotFoundException()
     {
-        _repoMock.Setup(r => r.GetLastByUserProfileIdAsync(10)).ReturnsAsync((Uzduotis?)null);
+        // Arrange
+        const int userProfileId = 10;
 
-        var query = new GetLastUzduotisByUserProfileIdQuery(10);
+        _repoMock
+            .Setup(repo => repo.GetLastByUserProfileIdAsync(userProfileId))
+            .ReturnsAsync((Uzduotis?)null);
 
-        await Assert.ThrowsAsync<UzduotisNotFoundException>(() => _handler.Handle(query));
+        var query = new GetLastUzduotisByUserProfileIdQuery(userProfileId);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<UzduotisNotFoundException>(() =>
+            _handler.Handle(query)
+        );
+
+        // Assert
+        Assert.Equal($"User {userProfileId} has no tasks.", exception.Message);
+
+        _repoMock.Verify(repo => repo.GetLastByUserProfileIdAsync(userProfileId), Times.Once);
     }
 }

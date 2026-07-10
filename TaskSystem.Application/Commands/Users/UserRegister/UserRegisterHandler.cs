@@ -43,8 +43,6 @@ public class UserRegisterHandler
         var accessToken = _jwt.GenerateAccessToken(user);
         var refreshToken = _jwt.GenerateRefreshToken();
 
-        await _profileRepo.SaveChangesAsync();
-
         return new AuthLoginResponse(
             user.Id,
             profile.Id,
