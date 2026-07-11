@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend - Build and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: >-
+        server=127.0.0.1;
+        port=3306;
+        database=tasksystem;
+        user=root;
+        password=root;
+      Jwt__Key: ci-only-secret-key-that-is-longer-than-32-characters
+      Jwt__Issuer: TaskSystemAPI
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: tasksystem
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --password=root --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore TaskSystem.slnx
+
+      - name: Build solution
+        run: >
+          dotnet build TaskSystem.slnx
+          --configuration Release
+          --no-restore
+
+      - name: Run tests
+        run: >
+          dotnet test TaskSystem.slnx
+          --configuration Release
+          --no-build
+          --verbosity normal
+
+      - name: Install EF Core CLI
+        run: >
+          dotnet tool install
+          --global dotnet-ef
+          --version 9.0.17
+
+      - name: Check pending EF Core model changes
+        run: >
+          dotnet ef migrations has-pending-model-changes
+          --project TaskSystem.Infrastructure
+          --startup-project TaskSystem.API
+          --configuration Release
+          --no-build
+
+  docker:
+    name: Docker - Build and Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: tasksystem
+      MYSQL_USER: tasksystem_app
+      MYSQL_PASSWORD: apppass
+      JWT_KEY: ci-only-secret-key-that-is-longer-than-32-characters
+      JWT_ISSUER: TaskSystemAPI
+      API_PORT: 8080
+      MYSQL_PORT: 3306
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Validate Docker Compose
+        run: docker compose config
+
+      - name: Build and start stack
+        run: docker compose up --build -d
+
+      - name: Wait for API health check
+        shell: bash
+        run: |
+          for attempt in {1..40}; do
+            if curl --fail --silent http://localhost:8080/health > /dev/null; then
+              echo "TaskSystem API is healthy."
+              exit 0
+            fi
+
+            echo "Waiting for API... attempt ${attempt}/40"
+            sleep 3
+          done
+
+          echo "API did not become healthy."
+          docker compose ps
+          docker compose logs --no-color
+          exit 1
+
+      - name: Show container status
+        run: docker compose ps
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v --remove-orphans

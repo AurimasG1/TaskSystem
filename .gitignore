@@ -1,35 +1,30 @@
-# Build
-bin/
-obj/
+# Build output
+**/bin/
+**/obj/
 out/
+publish/
 
-# User Secrets (lokalūs, niekada neturi būti GitHub'e)
-**/secrets.json
-
-# Environment files
-.env
-*.env
-
-# App settings (lokalūs)
-appsettings.Development.json
-
-# Visual Studio / Rider
+# IDE files
 .vs/
 .idea/
 *.user
 *.suo
 
+# Local secrets and environment files
+.env
+*.env
+!.env.example
+**/secrets.json
+
+# Local application settings
+appsettings.Development.local.json
+
 # Logs
 *.log
 
-# Docker
+# Docker local overrides
 docker-compose.override.yml
-docker-compose.*.yml
-**/Dockerfile*
 
-# OS files
+# Operating system files
 .DS_Store
 Thumbs.db
-
-# Publish
-publish/
