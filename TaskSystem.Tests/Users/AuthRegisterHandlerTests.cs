@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Moq;
 using TaskSystem.Application.Commands.Auth.AuthRegister;
 using TaskSystem.Domain.Entities;
+using TaskSystem.Domain.Exceptions;
 using TaskSystem.Domain.Interfaces;
 
 namespace TaskSystem.Tests.Auth;
@@ -165,10 +166,12 @@ public class AuthRegisterHandlerTests
         _userRepoMock.Setup(repo => repo.GetByEmailAsync(existingEmail)).ReturnsAsync(existingUser);
 
         // Act
-        var exception = await Assert.ThrowsAsync<Exception>(() => _handler.Handle(command));
+        var exception = await Assert.ThrowsAsync<UserAlreadyExistsException>(() =>
+            _handler.Handle(command)
+        );
 
         // Assert
-        Assert.Equal("User already exists", exception.Message);
+        Assert.Equal($"User with email '{existingEmail}' already exists.", exception.Message);
 
         _userRepoMock.Verify(repo => repo.GetByEmailAsync(existingEmail), Times.Once);
 

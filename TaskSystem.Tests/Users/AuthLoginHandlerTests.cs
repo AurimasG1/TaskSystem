@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Moq;
 using TaskSystem.Application.Commands.Auth.AuthLogin;
 using TaskSystem.Domain.Entities;
+using TaskSystem.Domain.Exceptions;
 using TaskSystem.Domain.Interfaces;
 
 namespace TaskSystem.Tests.Auth;
@@ -55,6 +56,8 @@ public class AuthLoginHandlerTests
             .Setup(repo => repo.GetByEmailForUpdateAsync(expectedEmail))
             .ReturnsAsync(user);
 
+        _jwtMock.SetupGet(jwt => jwt.Issuer).Returns("TaskSystemAPI");
+
         _jwtMock.Setup(jwt => jwt.GenerateAccessToken(user)).Returns(expectedAccessToken);
 
         _jwtMock.Setup(jwt => jwt.GenerateRefreshToken()).Returns(expectedRefreshToken);
@@ -87,7 +90,7 @@ public class AuthLoginHandlerTests
         Assert.NotNull(savedRefreshToken);
         Assert.Equal(expectedUserId, savedRefreshToken.UserId);
         Assert.Equal(expectedRefreshToken, savedRefreshToken.Token);
-        Assert.Equal("TaskSystem", savedRefreshToken.Issuer);
+        Assert.Equal("TaskSystemAPI", savedRefreshToken.Issuer);
         Assert.False(savedRefreshToken.IsRevoked);
 
         Assert.InRange(savedRefreshToken.CreatedAt, beforeLogin, afterLogin);
@@ -118,7 +121,7 @@ public class AuthLoginHandlerTests
                     It.Is<RefreshToken>(token =>
                         token.UserId == expectedUserId
                         && token.Token == expectedRefreshToken
-                        && token.Issuer == "TaskSystem"
+                        && token.Issuer == "TaskSystemAPI"
                         && !token.IsRevoked
                     )
                 ),
@@ -139,10 +142,12 @@ public class AuthLoginHandlerTests
         var command = new AuthLoginCommand(email, "Password123!");
 
         // Act
-        var exception = await Assert.ThrowsAsync<Exception>(() => _handler.Handle(command));
+        var exception = await Assert.ThrowsAsync<InvalidCredentialsException>(() =>
+            _handler.Handle(command)
+        );
 
         // Assert
-        Assert.Equal("Invalid credentials", exception.Message);
+        Assert.Equal("Invalid email or password.", exception.Message);
 
         _userRepoMock.Verify(repo => repo.GetByEmailForUpdateAsync(email), Times.Once);
 
@@ -170,10 +175,12 @@ public class AuthLoginHandlerTests
         var command = new AuthLoginCommand(email, incorrectPassword);
 
         // Act
-        var exception = await Assert.ThrowsAsync<Exception>(() => _handler.Handle(command));
+        var exception = await Assert.ThrowsAsync<InvalidCredentialsException>(() =>
+            _handler.Handle(command)
+        );
 
         // Assert
-        Assert.Equal("Invalid credentials", exception.Message);
+        Assert.Equal("Invalid email or password.", exception.Message);
 
         _userRepoMock.Verify(repo => repo.GetByEmailForUpdateAsync(email), Times.Once);
 
@@ -202,6 +209,8 @@ public class AuthLoginHandlerTests
 
     private void VerifyTokensWereNotCreated()
     {
+        _jwtMock.SetupGet(jwt => jwt.Issuer).Returns("TaskSystemAPI");
+
         _jwtMock.Verify(jwt => jwt.GenerateAccessToken(It.IsAny<User>()), Times.Never);
 
         _jwtMock.Verify(jwt => jwt.GenerateRefreshToken(), Times.Never);

@@ -1,5 +1,6 @@
 using TaskSystem.Application.DTO.Responses.Auth;
 using TaskSystem.Domain.Entities;
+using TaskSystem.Domain.Exceptions;
 using TaskSystem.Domain.Interfaces;
 
 namespace TaskSystem.Application.Commands.Auth.AuthRefreshToken
@@ -25,14 +26,16 @@ namespace TaskSystem.Application.Commands.Auth.AuthRefreshToken
         {
             var token =
                 await _refreshRepo.GetByTokenAsync(request.RefreshToken)
-                ?? throw new Exception("Invalid refresh token");
+                ?? throw new UnauthorizedAccessException("Invalid refresh token");
 
-            if (token.IsRevoked || token.ExpiresAt < DateTime.UtcNow)
-                throw new Exception("Refresh token expired");
+            if (token.IsRevoked || token.ExpiresAt <= DateTime.UtcNow)
+            {
+                throw new UnauthorizedAccessException("Refresh token is invalid or expired");
+            }
 
             var user =
                 await _userRepo.GetByIdForUpdateAsync(token.UserId)
-                ?? throw new Exception("User not found");
+                ?? throw new UserNotFoundException(token.UserId);
 
             // ROTACIJA — sugeneruojam naują refresh token
             token.IsRevoked = true;
@@ -45,6 +48,7 @@ namespace TaskSystem.Application.Commands.Auth.AuthRefreshToken
                     UserId = user.Id,
                     Token = newRefreshToken,
                     ExpiresAt = DateTime.UtcNow.AddDays(7),
+                    Issuer = token.Issuer,
                 }
             );
 

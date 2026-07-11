@@ -3,6 +3,7 @@
   <Project Path="TaskSystem.API/TaskSystem.API.csproj" />
   <Project Path="TaskSystem.Application/TaskSystem.Application.csproj" />
   <Project Path="TaskSystem.Infrastructure/TaskSystem.Infrastructure.csproj" />
+  <Project Path="TaskSystem.IntegrationTests/TaskSystem.IntegrationTests.csproj" />
   <Project Path="TaskSystem.Tests/TaskSystem.Tests.csproj" />
   <Project Path="TaskSystem.Domain/TaskSystem.Domain.csproj" />
 </Solution>

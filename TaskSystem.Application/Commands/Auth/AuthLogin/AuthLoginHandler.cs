@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using TaskSystem.Application.DTO.Responses.Auth;
 using TaskSystem.Domain.Entities;
+using TaskSystem.Domain.Exceptions;
 using TaskSystem.Domain.Interfaces;
 
 namespace TaskSystem.Application.Commands.Auth.AuthLogin;
@@ -30,7 +31,7 @@ public class AuthLoginHandler
         // 1. Load user with Profile (IMPORTANT)
         var user =
             await _userRepo.GetByEmailForUpdateAsync(request.Email)
-            ?? throw new Exception("Invalid credentials");
+            ?? throw new InvalidCredentialsException();
 
         // 2. Verify password
         var result = _passwordHasher.VerifyHashedPassword(
@@ -40,7 +41,9 @@ public class AuthLoginHandler
         );
 
         if (result != PasswordVerificationResult.Success)
-            throw new Exception("Invalid credentials");
+        {
+            throw new InvalidCredentialsException();
+        }
 
         // 3. Generate access token (NOW USING FULL USER OBJECT)
         var accessToken = _jwt.GenerateAccessToken(user);
@@ -54,7 +57,7 @@ public class AuthLoginHandler
                 UserId = user.Id,
                 Token = refreshToken,
                 ExpiresAt = DateTime.UtcNow.AddDays(7),
-                Issuer = "TaskSystem",
+                Issuer = _jwt.Issuer,
             }
         );
 

@@ -2,7 +2,7 @@ namespace TaskSystem.AdminCli.Config;
 
 public class CliConfiguration
 {
-    public string ConnectionString { get; set; }
+    public required string ConnectionString { get; set; }
 
     public static CliConfiguration Load()
     {

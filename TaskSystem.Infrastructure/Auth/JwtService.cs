@@ -18,9 +18,18 @@ public class JwtService : IJwtService
         _config = config;
     }
 
+    public string Issuer =>
+        _config["Jwt:Issuer"]
+        ?? throw new InvalidOperationException("Jwt:Issuer is not configured");
+
     public string GenerateAccessToken(User user)
     {
-        var issuer = _config["Jwt:Issuer"];
+        string issuer =
+            _config["Jwt:Issuer"]
+            ?? throw new InvalidOperationException("Jwt:Issuer is not configured");
+
+        string keyValue =
+            _config["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured");
 
         var claims = new List<Claim>
         {
@@ -28,10 +37,9 @@ public class JwtService : IJwtService
             new Claim("profileId", user.Profile.Id.ToString()),
             new Claim(ClaimTypes.Email, user.EmailValue),
             new Claim(ClaimTypes.Role, user.Role),
-            new Claim("iss", issuer!),
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyValue));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(

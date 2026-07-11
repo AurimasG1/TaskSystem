@@ -71,7 +71,7 @@ public class UserUzduotisController : ControllerBase
     {
         var item = await _getById.Handle(new GetUzduotisByIdQuery(id));
         if (item.UserProfileId != UserProfileId)
-            return Forbid("Not your task");
+            return Forbid();
         return Ok(item);
     }
 

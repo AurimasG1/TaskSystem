@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using TaskSystem.Application.DTO.Responses.Auth;
 using TaskSystem.Domain.Entities;
+using TaskSystem.Domain.Exceptions;
 using TaskSystem.Domain.Interfaces;
 
 namespace TaskSystem.Application.Commands.Auth.AuthRegister;
@@ -30,7 +31,9 @@ public class AuthRegisterHandler
         // 1. Check if user exists
         var existing = await _userRepo.GetByEmailAsync(request.Email);
         if (existing != null)
-            throw new Exception("User already exists");
+        {
+            throw new UserAlreadyExistsException(request.Email);
+        }
 
         // 2. Create user (role = onboarding)
         var user = new User();
