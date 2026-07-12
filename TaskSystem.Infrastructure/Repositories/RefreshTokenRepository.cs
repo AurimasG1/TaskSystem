@@ -28,4 +28,16 @@ public class RefreshTokenRepository : Repository<RefreshToken>, IRefreshTokenRep
         _dbSet.RemoveRange(tokens);
         return Task.CompletedTask;
     }
+
+    public Task<List<RefreshToken>> GetActiveByUserIdAsync(
+        int userId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return _dbSet
+            .Where(token =>
+                token.UserId == userId && !token.IsRevoked && token.ExpiresAt > DateTime.UtcNow
+            )
+            .ToListAsync(cancellationToken);
+    }
 }

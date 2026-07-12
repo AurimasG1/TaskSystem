@@ -5,8 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TaskSystem.Application.Commands.Admin.AdminPromoteUserToAdmin;
-using TaskSystem.Application.Commands.Admin.AdminPromoteUserToADmin;
-using TaskSystem.Application.Commands.Admin.PromoteUserToAdmin;
 using TaskSystem.Domain.Interfaces;
 using TaskSystem.Infrastructure.Persistence;
 using TaskSystem.Infrastructure.Repositories;
@@ -36,7 +34,17 @@ builder.Services.AddDbContext<AppDbContext>(
 );
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<PromoteUserToAdminHandler>();
+
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+
+builder.Services.AddScoped<AdminPromoteUserToAdminHandler>();
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<AdminPromoteUserToAdminHandler>();
 
 using var host = builder.Build();
 
@@ -92,7 +100,7 @@ async Task<int> ExecutePromotionAsync(
     {
         await using var scope = host.Services.CreateAsyncScope();
 
-        var handler = scope.ServiceProvider.GetRequiredService<PromoteUserToAdminHandler>();
+        var handler = scope.ServiceProvider.GetRequiredService<AdminPromoteUserToAdminHandler>();
 
         var result = await handler.HandleAsync(
             new AdminPromoteUserToAdminCommand(userId, email),

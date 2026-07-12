@@ -174,6 +174,9 @@ builder.Services.AddScoped<PasswordHasher<User>>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<AuthRefreshTokenHandler>();
 builder.Services.AddHostedService<TokenCleanupService>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserCommandValidator>();
 builder.Services.AddFluentValidationAutoValidation();
