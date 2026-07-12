@@ -1,256 +1,162 @@
 # TaskSystem
 
-TaskSystem is a task management REST API built with ASP.NET Core and MySQL.
+[![CI](https://github.com/AurimasG1/TaskSystem/actions/workflows/ci.yml/badge.svg)](https://github.com/AurimasG1/TaskSystem/actions/workflows/ci.yml)
 
-The project demonstrates layered backend architecture, JWT authentication, refresh token rotation, role-based authorization, user-scoped resource access, background processing, automated database migrations, Docker-based development, integration testing with real infrastructure, and continuous integration through GitHub Actions.
+TaskSystem is a task management REST API built with ASP.NET Core, Entity Framework Core, and MySQL.
 
-## Features
+The project demonstrates layered backend architecture, JWT authentication with refresh token rotation, role- and resource-based authorization, automated testing with real infrastructure, Docker-based development, database migrations, and continuous integration.
 
-- User registration and login
-- JWT bearer authentication
-- Refresh token rotation
-- Reused refresh token rejection
-- Role-based authorization with `onboarding`, `user`, and `admin` roles
-- User onboarding and profile creation
-- User-scoped task management
-- Administrative user and task management
-- Admin promotion tokens
-- Separate administrative CLI
-- FluentValidation request validation
-- Mapster object mapping
-- Global validation and exception middleware
-- Background cleanup of expired tokens
-- MySQL persistence through Entity Framework Core
-- Swagger/OpenAPI documentation with JWT support
-- Database health checks
-- Unit and integration tests
-- Docker Compose environment
-- GitHub Actions CI pipeline
+## What this project demonstrates
 
-## Technology Stack
+- Layered separation between API, application use cases, domain models, and infrastructure
+- JWT access tokens and persisted refresh-token rotation
+- Reused and revoked refresh-token rejection
+- `onboarding`, `user`, and `admin` authorization roles
+- Ownership checks that prevent users from accessing another user's tasks
+- Admin bootstrap/recovery through a separate CLI
+- Refresh-token revocation when a user is promoted to administrator
+- Entity Framework Core migrations and MySQL persistence
+- Unit tests with xUnit and Moq
+- Integration tests with `WebApplicationFactory`, Testcontainers, and real MySQL
+- Docker Compose orchestration for MySQL, migrations, and the API
+- GitHub Actions CI with build, tests, migration checks, container build, and health verification
 
-| Area                | Technologies                                       |
-| ------------------- | -------------------------------------------------- |
-| Backend             | C#, .NET 10, ASP.NET Core Web API                  |
-| Data access         | Entity Framework Core 9, Pomelo MySQL provider     |
-| Database            | MySQL 8                                            |
-| Authentication      | JWT bearer authentication, refresh token rotation  |
-| Authorization       | Role-based and resource-based authorization        |
-| Validation          | FluentValidation                                   |
-| Mapping             | Mapster                                            |
-| API documentation   | Swagger / OpenAPI                                  |
-| Unit testing        | xUnit, Moq, EF Core InMemory                       |
-| Integration testing | xUnit, WebApplicationFactory, Testcontainers       |
-| Infrastructure      | Docker, Docker Compose, ASP.NET Core Health Checks |
-| CI                  | GitHub Actions                                     |
+## Technology stack
+
+| Area | Technologies |
+|---|---|
+| Backend | C#, .NET 10, ASP.NET Core Web API |
+| Persistence | Entity Framework Core, Pomelo MySQL provider, MySQL 8 |
+| Authentication | JWT bearer authentication, refresh-token rotation |
+| Authorization | Role-based and resource ownership authorization |
+| Validation | FluentValidation |
+| Mapping | Mapster |
+| API documentation | Swagger / OpenAPI |
+| Unit testing | xUnit, Moq |
+| Integration testing | xUnit, `WebApplicationFactory`, Testcontainers, MySQL 8 |
+| Infrastructure | Docker, Docker Compose, health checks |
+| CI | GitHub Actions |
 
 ## Architecture
 
-The solution separates HTTP concerns, application use cases, domain models, and infrastructure implementations.
-
 ```mermaid
 flowchart LR
-    Client[API Client] --> API[TaskSystem.API]
+    Client[API client] --> API[TaskSystem.API]
+    AdminCLI[TaskSystem.AdminCli] --> Application
 
     API --> Application[TaskSystem.Application]
-    API --> Infrastructure[TaskSystem.Infrastructure]
-
     Application --> Domain[TaskSystem.Domain]
-
-    Infrastructure --> Application
+    Infrastructure[TaskSystem.Infrastructure] --> Application
     Infrastructure --> Domain
     Infrastructure --> MySQL[(MySQL 8)]
 
-    AdminCLI[TaskSystem.AdminCli] --> Infrastructure
+    API --> Infrastructure
+    AdminCLI --> Infrastructure
 
     IntegrationTests[TaskSystem.IntegrationTests] --> API
     IntegrationTests --> TestMySQL[(Testcontainers MySQL)]
 ```
 
-### Projects
+### Solution projects
 
-- `TaskSystem.API`
-  Controllers, authentication, authorization, Swagger, middleware, health checks, dependency registration, and HTTP configuration.
+| Project | Responsibility |
+|---|---|
+| `TaskSystem.API` | Controllers, authentication, authorization, Swagger, middleware, health checks, and dependency registration |
+| `TaskSystem.Application` | Commands, queries, handlers, DTOs, validation, mapping, and application use cases |
+| `TaskSystem.Domain` | Entities, value objects, domain behavior, and repository abstractions |
+| `TaskSystem.Infrastructure` | EF Core, repositories, migrations, JWT services, background services, and persistence |
+| `TaskSystem.AdminCli` | Administrative bootstrap and recovery operations |
+| `TaskSystem.Tests` | Unit tests for handlers and domain behavior |
+| `TaskSystem.IntegrationTests` | End-to-end API tests against a real temporary MySQL database |
 
-- `TaskSystem.Application`
-  Commands, queries, handlers, DTOs, validators, mapping configuration, and application-level abstractions.
+## Authentication and onboarding
 
-- `TaskSystem.Domain`
-  Domain entities, value objects, exceptions, and repository interfaces.
-
-- `TaskSystem.Infrastructure`
-  Entity Framework Core, repositories, migrations, JWT services, administrative services, and hosted background services.
-
-- `TaskSystem.AdminCli`
-  Command-line utility for administrative operations.
-
-- `TaskSystem.Tests`
-  Unit tests for application handlers and domain behavior.
-
-- `TaskSystem.IntegrationTests`
-  End-to-end API tests using `WebApplicationFactory` and a real MySQL 8 database started through Testcontainers.
-
-## Authentication Flow
-
-A newly registered account initially receives the `onboarding` role.
+A new account starts with the `onboarding` role.
 
 ```text
-Register
-  ↓
-onboarding access token
-  ↓
-Create user profile
-  ↓
-Role changed to user
-  ↓
-New access token issued
+Register account
+      ↓
+onboarding role
+      ↓
+Complete user profile
+      ↓
+user role
+      ↓
+Access token + persisted refresh token
 ```
 
-Authenticated users include their access token in the HTTP header:
+Access tokens are sent through the standard HTTP header:
 
 ```http
 Authorization: Bearer ACCESS_TOKEN
 ```
 
-Access tokens are short-lived. Refresh tokens are stored in the database and rotated whenever they are used.
-
 When a refresh token is exchanged:
 
-1. The old refresh token is revoked.
+1. The current refresh token is revoked.
 2. A new access token is issued.
-3. A new refresh token is issued.
-4. Reusing the old refresh token returns `401 Unauthorized`.
+3. A new refresh token is generated and persisted.
+4. Reusing the revoked token is rejected.
 
-## Authorization Model
+## Authorization model
 
-TaskSystem uses three roles:
-
-| Role         | Purpose                                                  |
-| ------------ | -------------------------------------------------------- |
-| `onboarding` | Account has been created but profile setup is incomplete |
-| `user`       | Standard authenticated application user                  |
-| `admin`      | Administrative access to users and tasks                 |
+| Role | Purpose |
+|---|---|
+| `onboarding` | Account exists, but profile setup is incomplete |
+| `user` | Standard authenticated application user |
+| `admin` | Administrative access to users and tasks |
 
 Authorization is enforced at two levels:
 
-- Role-based authorization restricts administrative endpoints.
-- Resource ownership checks prevent users from accessing another user's tasks.
+- Role checks protect administrative and onboarding-specific endpoints.
+- Ownership checks prevent users from reading or modifying another user's tasks.
 
-## API Overview
+## Main capabilities
 
-The complete endpoint list and request schemas are available through Swagger.
+### Authentication
 
-Main endpoint groups:
+- Account registration
+- Profile completion
+- Login
+- JWT access-token generation
+- Refresh-token persistence and rotation
+- Revoked-token rejection
+- Background cleanup of expired and revoked tokens
 
-| Group                     | Purpose                                              |
-| ------------------------- | ---------------------------------------------------- |
-| `/api/auth`               | Registration, login, and refresh token operations    |
-| `/api/user`               | Authenticated user onboarding and profile operations |
-| `/api/user/uzduotys`      | User-scoped task operations                          |
-| `/api/admin/users`        | Administrative user management                       |
-| `/api/admin/uzduotys`     | Administrative task management                       |
-| Admin promotion endpoints | Admin promotion token generation and redemption      |
-| `/health`                 | Application and database health status               |
+### Task management
 
-To call a protected endpoint through Swagger:
+- Create tasks
+- Retrieve user-owned tasks
+- Update tasks
+- Delete tasks
+- Retrieve or reset the latest task
+- Administrative task access
 
-1. Register or log in.
-2. Copy the returned access token.
-3. Select **Authorize**.
-4. Enter:
+### Administration
 
-```text
-Bearer ACCESS_TOKEN
-```
+- Administrative user management
+- Administrative task management
+- Token-based admin promotion flow
+- Separate bootstrap CLI for direct recovery operations
+- Active refresh-token revocation after admin promotion
 
-## Testing
+## API documentation
 
-The solution currently contains 31 automated tests:
+Swagger contains the current endpoint list, schemas, and authorization controls.
 
-- 23 unit tests
-- 8 integration tests
+After starting the Docker environment:
 
-Run the complete test suite:
+- Swagger UI: `http://localhost:8080/swagger`
+- Health check: `http://localhost:8080/health`
 
-```bash
-dotnet test TaskSystem.slnx
-```
+![Swagger API overview](docs/screenshots/swagger-1.png)
 
-Docker must be running because the integration tests start a temporary MySQL container.
-
-### Unit Tests
-
-Unit tests use:
-
-- xUnit
-- Moq
-- EF Core InMemory
-
-They verify application handlers, validation behavior, repository interactions, authentication failures, refresh token persistence, user registration, and task operations.
-
-Run only the unit tests:
-
-```bash
-dotnet test TaskSystem.Tests/TaskSystem.Tests.csproj
-```
-
-### Integration Tests
-
-Integration tests use:
-
-- `Microsoft.AspNetCore.Mvc.Testing`
-- `WebApplicationFactory`
-- Testcontainers
-- Real MySQL 8
-- Real ASP.NET Core middleware and controller pipeline
-
-Covered scenarios include:
-
-- Health endpoint returns `200 OK`
-- Protected endpoint without a token returns `401 Unauthorized`
-- Registration followed by login returns authentication tokens
-- Authenticated user can access their profile
-- Refresh token exchange rotates the token
-- Reusing an old refresh token returns `401 Unauthorized`
-- Normal user cannot access an admin endpoint
-- User cannot access another user's task
-
-Run only the integration tests:
-
-```bash
-dotnet test TaskSystem.IntegrationTests/TaskSystem.IntegrationTests.csproj
-```
-
-Testcontainers automatically creates and removes the temporary MySQL container.
-
-## Continuous Integration
-
-GitHub Actions runs on pushes and pull requests.
-
-The CI pipeline performs:
-
-1. Dependency restore
-2. Release build
-3. Unit and integration tests
-4. EF Core pending model-change check
-5. Docker Compose configuration validation
-6. Docker image build
-7. Full stack startup
-8. API health smoke test
-9. Container cleanup
-
-The workflow uses MySQL 8 and Docker on the GitHub-hosted runner.
-
-## Getting Started
+## Quick start with Docker
 
 ### Prerequisites
 
-Install:
-
-- .NET 10 SDK
-- Docker Desktop
 - Git
-- EF Core CLI tools for local migration commands
+- Docker Desktop
 
 Clone the repository:
 
@@ -259,34 +165,24 @@ git clone https://github.com/AurimasG1/TaskSystem.git
 cd TaskSystem
 ```
 
-## Run with Docker Compose
-
-Copy the environment template.
-
-### PowerShell
-
-```powershell
-Copy-Item .env.example .env
-```
-
-### Bash
+Create the local environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and replace the example passwords and JWT signing key.
-
-Start MySQL, apply database migrations, and launch the API:
+Replace the example database passwords and JWT key in `.env`, then start the stack:
 
 ```bash
 docker compose up --build
 ```
 
-The application will be available at:
+Docker Compose will:
 
-- Swagger UI: `http://localhost:8080/swagger`
-- Health check: `http://localhost:8080/health`
+1. Start MySQL 8.
+2. Wait for the database health check.
+3. Apply EF Core migrations.
+4. Start the API.
 
 Stop the environment:
 
@@ -294,46 +190,56 @@ Stop the environment:
 docker compose down
 ```
 
-Stop the environment and remove the MySQL volume:
+To also delete the local MySQL volume:
 
 ```bash
 docker compose down -v
 ```
 
-## Run Locally Without Docker
+> `docker compose down -v` permanently removes the local development database.
 
-Start a MySQL 8 instance and create a database named `tasksystem`.
+## Local development without running the API in Docker
 
-Restore dependencies:
+### Prerequisites
+
+- .NET 10 SDK
+- Docker Desktop or a local MySQL 8 instance
+- Git
+
+Restore the repository-local .NET tools and dependencies:
 
 ```bash
+dotnet tool restore
 dotnet restore TaskSystem.slnx
 ```
 
-Configure local secrets from the repository root:
+Start only MySQL through Docker:
+
+```bash
+cp .env.example .env
+docker compose up -d mysql
+```
+
+Configure local API secrets:
 
 ```bash
 dotnet user-secrets set \
   "ConnectionStrings:DefaultConnection" \
-  "server=localhost;port=3306;database=tasksystem;user=YOUR_USER;password=YOUR_PASSWORD" \
+  "server=127.0.0.1;port=3306;database=tasksystem;user=YOUR_USER;password=YOUR_PASSWORD" \
   --project TaskSystem.API
-```
 
-```bash
 dotnet user-secrets set \
   "Jwt:Key" \
   "REPLACE_WITH_A_LONG_RANDOM_SECRET" \
   --project TaskSystem.API
-```
 
-```bash
 dotnet user-secrets set \
   "Jwt:Issuer" \
   "TaskSystemAPI" \
   --project TaskSystem.API
 ```
 
-Apply database migrations:
+Apply migrations:
 
 ```bash
 dotnet ef database update \
@@ -347,25 +253,92 @@ Run the API:
 dotnet run --project TaskSystem.API
 ```
 
-Development endpoints:
+## Admin bootstrap CLI
 
-- Swagger UI: `https://localhost:7214/swagger`
-- Swagger UI: `http://localhost:5263/swagger`
-- Health check: `http://localhost:5263/health`
+`TaskSystem.AdminCli` is intended for the first administrator or account-recovery scenarios. It connects directly to the database and uses the same application-level promotion use case as the rest of the system.
+
+Configure its local connection string:
+
+```bash
+dotnet user-secrets set \
+  "ConnectionStrings:DefaultConnection" \
+  "server=127.0.0.1;port=3306;database=tasksystem;user=YOUR_USER;password=YOUR_PASSWORD" \
+  --project TaskSystem.AdminCli
+```
+
+Show available commands:
+
+```bash
+dotnet run --project TaskSystem.AdminCli -- --help
+```
+
+Promote a user by email:
+
+```bash
+dotnet run --project TaskSystem.AdminCli -- \
+  bootstrap-admin \
+  --email user@example.com
+```
+
+Promote a user by ID:
+
+```bash
+dotnet run --project TaskSystem.AdminCli -- \
+  bootstrap-admin \
+  --user-id 1
+```
+
+A successful promotion changes the role to `admin` and revokes the user's active refresh tokens.
+
+## Testing
+
+Docker must be running because integration tests start a temporary MySQL container through Testcontainers.
+
+Run the complete test suite:
+
+```bash
+dotnet test TaskSystem.slnx
+```
+
+Run only unit tests:
+
+```bash
+dotnet test TaskSystem.Tests/TaskSystem.Tests.csproj
+```
+
+Run only integration tests:
+
+```bash
+dotnet test TaskSystem.IntegrationTests/TaskSystem.IntegrationTests.csproj
+```
+
+The test suite covers application handlers, repository interactions, authentication failures, refresh-token persistence and rotation, authorization boundaries, health checks, and user-owned resource access.
+
+## Continuous integration
+
+The GitHub Actions workflow runs on pushes and pull requests. It performs:
+
+1. Dependency and local-tool restore
+2. Release build
+3. Unit and integration tests
+4. EF Core pending-model-change check
+5. Docker Compose configuration validation
+6. Docker image build
+7. Full-stack startup
+8. API health smoke test
+9. Container cleanup
 
 ## Configuration
 
-The API uses standard ASP.NET Core configuration sources.
+The application uses standard ASP.NET Core configuration.
 
-Required configuration values:
-
-| Key                                   | Purpose                 |
-| ------------------------------------- | ----------------------- |
+| Key | Purpose |
+|---|---|
 | `ConnectionStrings:DefaultConnection` | MySQL connection string |
-| `Jwt:Key`                             | JWT signing key         |
-| `Jwt:Issuer`                          | Expected JWT issuer     |
+| `Jwt:Key` | JWT signing key |
+| `Jwt:Issuer` | JWT issuer |
 
-Environment variable equivalents:
+Environment-variable equivalents:
 
 ```text
 ConnectionStrings__DefaultConnection
@@ -373,67 +346,21 @@ Jwt__Key
 Jwt__Issuer
 ```
 
-Sensitive values must not be committed to source control.
+Development secrets should be stored in .NET User Secrets or a local `.env` file that is excluded from source control. Real credentials must not be committed.
 
-For local development, use .NET User Secrets. For Docker or deployment environments, use environment variables or a dedicated secrets manager.
+## Planned improvements
 
-## Admin CLI
-
-The administrative CLI supports promoting users without exposing the operation through a public unrestricted endpoint.
-
-Create:
-
-```text
-TaskSystem.AdminCli/.env
-```
-
-Add the database connection string:
-
-```text
-TASKSYSTEM_DB=server=localhost;port=3306;database=tasksystem;user=YOUR_USER;password=YOUR_PASSWORD
-```
-
-Promote a user by email:
-
-```bash
-dotnet run --project TaskSystem.AdminCli -- \
-  admin promote \
-  --email=user@example.com
-```
-
-Promote a user by ID:
-
-```bash
-dotnet run --project TaskSystem.AdminCli -- \
-  admin promote \
-  --userId=1
-```
-
-## Security Considerations
-
-- Protected endpoints require a valid JWT access token.
-- Admin endpoints require the `admin` role.
-- User task operations verify resource ownership.
-- Refresh tokens are rotated and revoked after use.
-- Expired tokens are removed by a hosted background service.
-- Passwords are stored as hashes.
-- Secrets are supplied through User Secrets or environment variables.
-- Real credentials must not be committed to the repository.
-
-## Planned Improvements
-
-- Structured logging with Serilog
+- Standardized API error responses with `ProblemDetails`
+- Integration test for refresh-token rejection after admin promotion
+- Admin role-change audit trail
 - Rate limiting for authentication endpoints
-- Access and refresh token cookie support for browser clients
 - Pagination and filtering for administrative queries
-- Additional integration tests for validation and failure scenarios
-- API usage examples with request and response payloads
-- Deployment configuration for a cloud environment
-- Code coverage reporting in CI
+- Code coverage reporting
+- Cloud deployment configuration
 
 ## Author
 
 **Aurimas Gedvilas**
 
-- GitHub: `AurimasG1`
-- LinkedIn: `aurimas-gedvilas`
+- GitHub: [AurimasG1](https://github.com/AurimasG1)
+- LinkedIn: [aurimas-gedvilas](https://www.linkedin.com/in/aurimas-gedvilas/)
