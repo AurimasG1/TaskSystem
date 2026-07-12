@@ -7,6 +7,8 @@ using TaskSystem.Infrastructure.Admin;
 
 namespace TaskSystem.API.Controllers;
 
+[ApiController]
+[Route("api/admin")]
 public class AdminController : ControllerBase
 {
     private readonly AdminPromoteWithTokenHandler _promote;

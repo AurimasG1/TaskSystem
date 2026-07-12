@@ -50,7 +50,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: '10.0.x'
 
       - name: Restore dependencies
         run: dotnet restore TaskSystem.slnx
@@ -73,6 +73,9 @@ jobs:
           dotnet tool install
           --global dotnet-ef
           --version 9.0.17
+
+      - name: Restore local .NET tools
+        run: dotnet tool restore
 
       - name: Check pending EF Core model changes
         run: >
