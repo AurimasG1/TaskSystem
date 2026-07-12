@@ -1,3 +1,4 @@
+using TaskSystem.Domain.Authorization;
 using TaskSystem.Domain.ValueObjects;
 
 namespace TaskSystem.Domain.Entities
@@ -21,6 +22,13 @@ namespace TaskSystem.Domain.Entities
         {
             get => _email.Value;
             private set => _email = Email.Create(value);
+        }
+        public bool IsAdmin =>
+            string.Equals(Role, SystemRoles.Admin, StringComparison.OrdinalIgnoreCase);
+
+        public void PromoteToAdmin()
+        {
+            Role = SystemRoles.Admin;
         }
     }
 }
