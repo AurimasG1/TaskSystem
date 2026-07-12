@@ -5,23 +5,31 @@ using TaskSystem.Domain.Interfaces;
 
 namespace TaskSystem.Tests.Users;
 
-public class UserRegisterHandlerTests
+public sealed class UserRegisterHandlerTests
 {
-    private readonly Mock<IUserRepository> _userRepoMock;
-    private readonly Mock<IUserProfileRepository> _profileRepoMock;
-    private readonly Mock<IJwtService> _jwtMock;
+    private static readonly DateTimeOffset FixedUtcNow = new(2026, 7, 12, 12, 0, 0, TimeSpan.Zero);
+
+    private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IRefreshTokenRepository> _refreshTokenRepositoryMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IJwtService> _jwtServiceMock;
     private readonly UserRegisterHandler _handler;
 
     public UserRegisterHandlerTests()
     {
-        _userRepoMock = new Mock<IUserRepository>();
-        _profileRepoMock = new Mock<IUserProfileRepository>();
-        _jwtMock = new Mock<IJwtService>();
+        _userRepositoryMock = new Mock<IUserRepository>();
+        _refreshTokenRepositoryMock = new Mock<IRefreshTokenRepository>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _jwtServiceMock = new Mock<IJwtService>();
+
+        var timeProvider = new FixedTimeProvider(FixedUtcNow);
 
         _handler = new UserRegisterHandler(
-            _userRepoMock.Object,
-            _profileRepoMock.Object,
-            _jwtMock.Object
+            _userRepositoryMock.Object,
+            _refreshTokenRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            _jwtServiceMock.Object,
+            timeProvider
         );
     }
 
@@ -31,11 +39,18 @@ public class UserRegisterHandlerTests
         // Arrange
         const int expectedUserId = 10;
         const int expectedProfileId = 99;
+
         const string expectedEmail = "aurimas@test.com";
+
         const string expectedFirstName = "Aurimas";
+
         const string expectedLastName = "Kazlauskas";
+
         const string expectedAccessToken = "TEST_ACCESS_TOKEN";
+
         const string expectedRefreshToken = "TEST_REFRESH_TOKEN";
+
+        const string expectedIssuer = "TaskSystemAPI";
 
         var user = CreateOnboardingUser(
             userId: expectedUserId,
@@ -45,22 +60,32 @@ public class UserRegisterHandlerTests
 
         var command = new UserRegisterCommand(expectedUserId, expectedFirstName, expectedLastName);
 
-        _userRepoMock.Setup(repo => repo.GetByIdForUpdateAsync(expectedUserId)).ReturnsAsync(user);
+        _userRepositoryMock
+            .Setup(repository => repository.GetByIdForUpdateAsync(expectedUserId))
+            .ReturnsAsync(user);
 
-        _userRepoMock.Setup(repo => repo.SaveChangesAsync()).Returns(Task.CompletedTask);
-
-        _profileRepoMock.Setup(repo => repo.SaveChangesAsync()).Returns(Task.CompletedTask);
-
-        _jwtMock
-            .Setup(jwt => jwt.GenerateAccessToken(It.IsAny<User>()))
+        _jwtServiceMock
+            .Setup(service => service.GenerateAccessToken(It.IsAny<User>()))
             .Returns(expectedAccessToken);
 
-        _jwtMock.Setup(jwt => jwt.GenerateRefreshToken()).Returns(expectedRefreshToken);
+        _jwtServiceMock
+            .Setup(service => service.GenerateRefreshToken())
+            .Returns(expectedRefreshToken);
+
+        _jwtServiceMock.SetupGet(service => service.Issuer).Returns(expectedIssuer);
+
+        _refreshTokenRepositoryMock
+            .Setup(repository => repository.AddAsync(It.IsAny<RefreshToken>()))
+            .Returns(Task.CompletedTask);
+
+        _unitOfWorkMock
+            .Setup(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(3);
 
         // Act
         var result = await _handler.Handle(command);
 
-        // Assert: returned response
+        // Assert: response
         Assert.Equal(expectedUserId, result.UserId);
         Assert.Equal(expectedProfileId, result.ProfileId);
         Assert.Equal(expectedEmail, result.Email);
@@ -70,22 +95,25 @@ public class UserRegisterHandlerTests
 
         // Assert: modified entities
         Assert.Equal("user", user.Role);
+
+        Assert.NotNull(user.Profile);
         Assert.Equal(expectedFirstName, user.Profile.FirstName);
         Assert.Equal(expectedLastName, user.Profile.LastName);
 
-        // Assert: dependencies
-        _userRepoMock.Verify(repo => repo.GetByIdForUpdateAsync(expectedUserId), Times.Once);
+        // Assert: user retrieval
+        _userRepositoryMock.Verify(
+            repository => repository.GetByIdForUpdateAsync(expectedUserId),
+            Times.Once
+        );
 
-        _userRepoMock.Verify(repo => repo.SaveChangesAsync(), Times.Once);
-
-        _profileRepoMock.Verify(repo => repo.SaveChangesAsync(), Times.Once);
-
-        _jwtMock.Verify(
-            jwt =>
-                jwt.GenerateAccessToken(
+        // Assert: JWT generation
+        _jwtServiceMock.Verify(
+            service =>
+                service.GenerateAccessToken(
                     It.Is<User>(actualUser =>
                         actualUser.Id == expectedUserId
                         && actualUser.Role == "user"
+                        && actualUser.Profile != null
                         && actualUser.Profile.Id == expectedProfileId
                         && actualUser.Profile.FirstName == expectedFirstName
                         && actualUser.Profile.LastName == expectedLastName
@@ -94,7 +122,30 @@ public class UserRegisterHandlerTests
             Times.Once
         );
 
-        _jwtMock.Verify(jwt => jwt.GenerateRefreshToken(), Times.Once);
+        _jwtServiceMock.Verify(service => service.GenerateRefreshToken(), Times.Once);
+
+        // Assert: refresh token persistence
+        _refreshTokenRepositoryMock.Verify(
+            repository =>
+                repository.AddAsync(
+                    It.Is<RefreshToken>(token =>
+                        token.UserId == expectedUserId
+                        && token.Token == expectedRefreshToken
+                        && token.Issuer == expectedIssuer
+                        && token.ExpiresAt == FixedUtcNow.UtcDateTime.AddDays(7)
+                        && !token.IsRevoked
+                        && token.RevokedAt == null
+                        && token.RevocationReason == null
+                    )
+                ),
+            Times.Once
+        );
+
+        // Assert: atomic save
+        _unitOfWorkMock.Verify(
+            unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Once
+        );
     }
 
     [Fact]
@@ -105,8 +156,8 @@ public class UserRegisterHandlerTests
 
         var command = new UserRegisterCommand(missingUserId, "Aurimas", "Kazlauskas");
 
-        _userRepoMock
-            .Setup(repo => repo.GetByIdForUpdateAsync(missingUserId))
+        _userRepositoryMock
+            .Setup(repository => repository.GetByIdForUpdateAsync(missingUserId))
             .ReturnsAsync((User?)null);
 
         // Act
@@ -115,7 +166,10 @@ public class UserRegisterHandlerTests
         // Assert
         Assert.Equal("User not found", exception.Message);
 
-        _userRepoMock.Verify(repo => repo.GetByIdForUpdateAsync(missingUserId), Times.Once);
+        _userRepositoryMock.Verify(
+            repository => repository.GetByIdForUpdateAsync(missingUserId),
+            Times.Once
+        );
 
         VerifyNothingWasSavedOrGenerated();
     }
@@ -132,7 +186,9 @@ public class UserRegisterHandlerTests
 
         var command = new UserRegisterCommand(userId, "Aurimas", "Kazlauskas");
 
-        _userRepoMock.Setup(repo => repo.GetByIdForUpdateAsync(userId)).ReturnsAsync(user);
+        _userRepositoryMock
+            .Setup(repository => repository.GetByIdForUpdateAsync(userId))
+            .ReturnsAsync(user);
 
         // Act
         var exception = await Assert.ThrowsAsync<Exception>(() => _handler.Handle(command));
@@ -140,11 +196,47 @@ public class UserRegisterHandlerTests
         // Assert
         Assert.Equal("Profile already completed", exception.Message);
 
+        Assert.NotNull(user.Profile);
         Assert.Equal(string.Empty, user.Profile.FirstName);
         Assert.Equal(string.Empty, user.Profile.LastName);
         Assert.Equal("user", user.Role);
 
-        _userRepoMock.Verify(repo => repo.GetByIdForUpdateAsync(userId), Times.Once);
+        _userRepositoryMock.Verify(
+            repository => repository.GetByIdForUpdateAsync(userId),
+            Times.Once
+        );
+
+        VerifyNothingWasSavedOrGenerated();
+    }
+
+    [Fact]
+    public async Task Handle_WhenUserProfileDoesNotExist_ThrowsException()
+    {
+        // Arrange
+        const int userId = 10;
+
+        var user = new User
+        {
+            Id = userId,
+            Role = "onboarding",
+            Profile = null!,
+        };
+
+        user.SetEmail("aurimas@test.com");
+
+        var command = new UserRegisterCommand(userId, "Aurimas", "Kazlauskas");
+
+        _userRepositoryMock
+            .Setup(repository => repository.GetByIdForUpdateAsync(userId))
+            .ReturnsAsync(user);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _handler.Handle(command)
+        );
+
+        // Assert
+        Assert.Equal("User profile was not found.", exception.Message);
 
         VerifyNothingWasSavedOrGenerated();
     }
@@ -160,6 +252,8 @@ public class UserRegisterHandlerTests
             Id = profileId,
             UserId = userId,
             User = user,
+            FirstName = string.Empty,
+            LastName = string.Empty,
         };
 
         user.Profile = profile;
@@ -169,12 +263,36 @@ public class UserRegisterHandlerTests
 
     private void VerifyNothingWasSavedOrGenerated()
     {
-        _userRepoMock.Verify(repo => repo.SaveChangesAsync(), Times.Never);
+        _refreshTokenRepositoryMock.Verify(
+            repository => repository.AddAsync(It.IsAny<RefreshToken>()),
+            Times.Never
+        );
 
-        _profileRepoMock.Verify(repo => repo.SaveChangesAsync(), Times.Never);
+        _unitOfWorkMock.Verify(
+            unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Never
+        );
 
-        _jwtMock.Verify(jwt => jwt.GenerateAccessToken(It.IsAny<User>()), Times.Never);
+        _jwtServiceMock.Verify(
+            service => service.GenerateAccessToken(It.IsAny<User>()),
+            Times.Never
+        );
 
-        _jwtMock.Verify(jwt => jwt.GenerateRefreshToken(), Times.Never);
+        _jwtServiceMock.Verify(service => service.GenerateRefreshToken(), Times.Never);
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        private readonly DateTimeOffset _utcNow;
+
+        public FixedTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
+        }
     }
 }

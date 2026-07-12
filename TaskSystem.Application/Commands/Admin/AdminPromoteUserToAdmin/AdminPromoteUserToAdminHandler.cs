@@ -1,16 +1,27 @@
-using TaskSystem.Application.Commands.Admin.AdminPromoteUserToAdmin;
-using TaskSystem.Application.Commands.Admin.AdminPromoteUserToADmin;
 using TaskSystem.Domain.Interfaces;
 
-namespace TaskSystem.Application.Commands.Admin.PromoteUserToAdmin;
+namespace TaskSystem.Application.Commands.Admin.AdminPromoteUserToAdmin;
 
-public sealed class PromoteUserToAdminHandler
+public sealed class AdminPromoteUserToAdminHandler
 {
-    private readonly IUserRepository _users;
+    private const string TokenRevocationReason = "User promoted to admin";
 
-    public PromoteUserToAdminHandler(IUserRepository users)
+    private readonly IUserRepository _users;
+    private readonly IRefreshTokenRepository _refreshTokens;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
+
+    public AdminPromoteUserToAdminHandler(
+        IUserRepository users,
+        IRefreshTokenRepository refreshTokens,
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider
+    )
     {
         _users = users;
+        _refreshTokens = refreshTokens;
+        _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
     }
 
     public async Task<AdminPromoteUserToAdminResult> HandleAsync(
@@ -52,9 +63,21 @@ public sealed class PromoteUserToAdminHandler
 
         var previousRole = user.Role;
 
+        var activeRefreshTokens = await _refreshTokens.GetActiveByUserIdAsync(
+            user.Id,
+            cancellationToken
+        );
+
+        var revokedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+
         user.PromoteToAdmin();
 
-        await _users.SaveChangesAsync();
+        foreach (var refreshToken in activeRefreshTokens)
+        {
+            refreshToken.Revoke(revokedAtUtc, TokenRevocationReason);
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new AdminPromoteUserToAdminResult(
             AdminPromoteUserToAdminStatus.Success,

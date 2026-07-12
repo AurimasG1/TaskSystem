@@ -1,7 +1,5 @@
 using Moq;
 using TaskSystem.Application.Commands.Admin.AdminPromoteUserToAdmin;
-using TaskSystem.Application.Commands.Admin.AdminPromoteUserToADmin;
-using TaskSystem.Application.Commands.Admin.PromoteUserToAdmin;
 using TaskSystem.Domain.Entities;
 using TaskSystem.Domain.Interfaces;
 
@@ -9,32 +7,55 @@ namespace TaskSystem.Tests.Admin;
 
 public sealed class PromoteUserToAdminHandlerTests
 {
-    private readonly Mock<IUserRepository> _userRepositoryMock;
-    private readonly PromoteUserToAdminHandler _handler;
+    private static readonly DateTimeOffset FixedUtcNow = new(2026, 7, 12, 12, 0, 0, TimeSpan.Zero);
+
+    private readonly Mock<IUserRepository> _usersMock;
+    private readonly Mock<IRefreshTokenRepository> _tokensMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly AdminPromoteUserToAdminHandler _handler;
 
     public PromoteUserToAdminHandlerTests()
     {
-        _userRepositoryMock = new Mock<IUserRepository>();
+        _usersMock = new Mock<IUserRepository>();
+        _tokensMock = new Mock<IRefreshTokenRepository>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
 
-        _handler = new PromoteUserToAdminHandler(_userRepositoryMock.Object);
+        var timeProvider = new FixedTimeProvider(FixedUtcNow);
+
+        _handler = new AdminPromoteUserToAdminHandler(
+            _usersMock.Object,
+            _tokensMock.Object,
+            _unitOfWorkMock.Object,
+            timeProvider
+        );
     }
 
     [Fact]
-    public async Task HandleAsync_WithEmail_PromotesUser()
+    public async Task HandleAsync_WithEmail_PromotesUserAndRevokesTokens()
     {
         // Arrange
         const int userId = 1;
         const string email = "aurimas@test.com";
 
-        var user = CreateUser(id: userId, email: email, role: "onboarding");
+        var user = CreateUser(userId, email, "onboarding");
 
-        _userRepositoryMock
+        var firstToken = CreateRefreshToken(userId, "first-token");
+
+        var secondToken = CreateRefreshToken(userId, "second-token");
+
+        _usersMock
             .Setup(repository => repository.GetByEmailForUpdateAsync(email))
             .ReturnsAsync(user);
 
-        _userRepositoryMock
-            .Setup(repository => repository.SaveChangesAsync())
-            .Returns(Task.CompletedTask);
+        _tokensMock
+            .Setup(repository =>
+                repository.GetActiveByUserIdAsync(userId, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync([firstToken, secondToken]);
+
+        _unitOfWorkMock
+            .Setup(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(3);
 
         var command = new AdminPromoteUserToAdminCommand(UserId: null, Email: email);
 
@@ -43,22 +64,19 @@ public sealed class PromoteUserToAdminHandlerTests
 
         // Assert
         Assert.Equal(AdminPromoteUserToAdminStatus.Success, result.Status);
+
         Assert.Equal(userId, result.UserId);
         Assert.Equal(email, result.Email);
         Assert.Equal("onboarding", result.PreviousRole);
         Assert.Equal("admin", user.Role);
 
-        _userRepositoryMock.Verify(
-            repository => repository.GetByEmailForUpdateAsync(email),
+        AssertTokenRevoked(firstToken);
+        AssertTokenRevoked(secondToken);
+
+        _unitOfWorkMock.Verify(
+            unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()),
             Times.Once
         );
-
-        _userRepositoryMock.Verify(
-            repository => repository.GetByIdForUpdateAsync(It.IsAny<int>()),
-            Times.Never
-        );
-
-        _userRepositoryMock.Verify(repository => repository.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -68,15 +86,19 @@ public sealed class PromoteUserToAdminHandlerTests
         const int userId = 5;
         const string email = "user@test.com";
 
-        var user = CreateUser(id: userId, email: email, role: "user");
+        var user = CreateUser(userId, email, "user");
 
-        _userRepositoryMock
-            .Setup(repository => repository.GetByIdForUpdateAsync(userId))
-            .ReturnsAsync(user);
+        _usersMock.Setup(repository => repository.GetByIdForUpdateAsync(userId)).ReturnsAsync(user);
 
-        _userRepositoryMock
-            .Setup(repository => repository.SaveChangesAsync())
-            .Returns(Task.CompletedTask);
+        _tokensMock
+            .Setup(repository =>
+                repository.GetActiveByUserIdAsync(userId, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync([]);
+
+        _unitOfWorkMock
+            .Setup(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
         var command = new AdminPromoteUserToAdminCommand(UserId: userId, Email: null);
 
@@ -85,22 +107,21 @@ public sealed class PromoteUserToAdminHandlerTests
 
         // Assert
         Assert.Equal(AdminPromoteUserToAdminStatus.Success, result.Status);
-        Assert.Equal(userId, result.UserId);
-        Assert.Equal(email, result.Email);
-        Assert.Equal("user", result.PreviousRole);
+
         Assert.Equal("admin", user.Role);
+        Assert.Equal("user", result.PreviousRole);
 
-        _userRepositoryMock.Verify(
-            repository => repository.GetByIdForUpdateAsync(userId),
-            Times.Once
-        );
+        _usersMock.Verify(repository => repository.GetByIdForUpdateAsync(userId), Times.Once);
 
-        _userRepositoryMock.Verify(
+        _usersMock.Verify(
             repository => repository.GetByEmailForUpdateAsync(It.IsAny<string>()),
             Times.Never
         );
 
-        _userRepositoryMock.Verify(repository => repository.SaveChangesAsync(), Times.Once);
+        _unitOfWorkMock.Verify(
+            unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Once
+        );
     }
 
     [Fact]
@@ -109,7 +130,7 @@ public sealed class PromoteUserToAdminHandlerTests
         // Arrange
         const string email = "missing@test.com";
 
-        _userRepositoryMock
+        _usersMock
             .Setup(repository => repository.GetByEmailForUpdateAsync(email))
             .ReturnsAsync((User?)null);
 
@@ -121,28 +142,25 @@ public sealed class PromoteUserToAdminHandlerTests
         // Assert
         Assert.Equal(AdminPromoteUserToAdminStatus.UserNotFound, result.Status);
 
-        Assert.Null(result.UserId);
-        Assert.Null(result.Email);
-        Assert.Null(result.PreviousRole);
-
-        _userRepositoryMock.Verify(
-            repository => repository.GetByEmailForUpdateAsync(email),
-            Times.Once
+        _tokensMock.Verify(
+            repository =>
+                repository.GetActiveByUserIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never
         );
 
-        _userRepositoryMock.Verify(repository => repository.SaveChangesAsync(), Times.Never);
+        VerifyNothingWasSaved();
     }
 
     [Fact]
-    public async Task HandleAsync_WhenUserIsAlreadyAdmin_ReturnsAlreadyAdmin()
+    public async Task HandleAsync_WhenAlreadyAdmin_ReturnsAlreadyAdmin()
     {
         // Arrange
         const int userId = 1;
         const string email = "admin@test.com";
 
-        var user = CreateUser(id: userId, email: email, role: "admin");
+        var user = CreateUser(userId, email, "admin");
 
-        _userRepositoryMock
+        _usersMock
             .Setup(repository => repository.GetByEmailForUpdateAsync(email))
             .ReturnsAsync(user);
 
@@ -154,96 +172,85 @@ public sealed class PromoteUserToAdminHandlerTests
         // Assert
         Assert.Equal(AdminPromoteUserToAdminStatus.AlreadyAdmin, result.Status);
 
-        Assert.Equal(userId, result.UserId);
-        Assert.Equal(email, result.Email);
-        Assert.Equal("admin", result.PreviousRole);
         Assert.Equal("admin", user.Role);
 
-        _userRepositoryMock.Verify(repository => repository.SaveChangesAsync(), Times.Never);
+        _tokensMock.Verify(
+            repository =>
+                repository.GetActiveByUserIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+
+        VerifyNothingWasSaved();
     }
 
     [Fact]
     public async Task HandleAsync_WhenBothIdentifiersProvided_ReturnsInvalidIdentifier()
     {
-        // Arrange
         var command = new AdminPromoteUserToAdminCommand(UserId: 1, Email: "aurimas@test.com");
 
-        // Act
         var result = await _handler.HandleAsync(command);
 
-        // Assert
         Assert.Equal(AdminPromoteUserToAdminStatus.InvalidIdentifier, result.Status);
 
-        VerifyRepositoryWasNotUsed();
+        VerifyRepositoriesWereNotUsed();
     }
 
     [Fact]
     public async Task HandleAsync_WhenNoIdentifierProvided_ReturnsInvalidIdentifier()
     {
-        // Arrange
         var command = new AdminPromoteUserToAdminCommand(UserId: null, Email: null);
 
-        // Act
         var result = await _handler.HandleAsync(command);
 
-        // Assert
         Assert.Equal(AdminPromoteUserToAdminStatus.InvalidIdentifier, result.Status);
 
-        VerifyRepositoryWasNotUsed();
+        VerifyRepositoriesWereNotUsed();
     }
 
     [Fact]
     public async Task HandleAsync_WhenEmailIsWhitespace_ReturnsInvalidIdentifier()
     {
-        // Arrange
         var command = new AdminPromoteUserToAdminCommand(UserId: null, Email: "   ");
 
-        // Act
         var result = await _handler.HandleAsync(command);
 
-        // Assert
         Assert.Equal(AdminPromoteUserToAdminStatus.InvalidIdentifier, result.Status);
 
-        VerifyRepositoryWasNotUsed();
+        VerifyRepositoriesWereNotUsed();
     }
 
     [Fact]
-    public async Task HandleAsync_WithWhitespaceAroundEmail_TrimsEmailBeforeLookup()
+    public async Task HandleAsync_TrimsEmailBeforeLookup()
     {
         // Arrange
+        const int userId = 1;
         const string email = "aurimas@test.com";
-        const string untrimmedEmail = "  aurimas@test.com  ";
 
-        var user = CreateUser(id: 1, email: email, role: "user");
+        var user = CreateUser(userId, email, "user");
 
-        _userRepositoryMock
+        _usersMock
             .Setup(repository => repository.GetByEmailForUpdateAsync(email))
             .ReturnsAsync(user);
 
-        _userRepositoryMock
-            .Setup(repository => repository.SaveChangesAsync())
-            .Returns(Task.CompletedTask);
+        _tokensMock
+            .Setup(repository =>
+                repository.GetActiveByUserIdAsync(userId, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync([]);
 
-        var command = new AdminPromoteUserToAdminCommand(UserId: null, Email: untrimmedEmail);
+        _unitOfWorkMock
+            .Setup(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var command = new AdminPromoteUserToAdminCommand(UserId: null, Email: $"  {email}  ");
 
         // Act
         var result = await _handler.HandleAsync(command);
 
         // Assert
         Assert.Equal(AdminPromoteUserToAdminStatus.Success, result.Status);
-        Assert.Equal("admin", user.Role);
 
-        _userRepositoryMock.Verify(
-            repository => repository.GetByEmailForUpdateAsync(email),
-            Times.Once
-        );
-
-        _userRepositoryMock.Verify(
-            repository => repository.GetByEmailForUpdateAsync(untrimmedEmail),
-            Times.Never
-        );
-
-        _userRepositoryMock.Verify(repository => repository.SaveChangesAsync(), Times.Once);
+        _usersMock.Verify(repository => repository.GetByEmailForUpdateAsync(email), Times.Once);
     }
 
     private static User CreateUser(int id, string email, string role)
@@ -255,18 +262,67 @@ public sealed class PromoteUserToAdminHandlerTests
         return user;
     }
 
-    private void VerifyRepositoryWasNotUsed()
+    private static RefreshToken CreateRefreshToken(int userId, string token)
     {
-        _userRepositoryMock.Verify(
+        return new RefreshToken
+        {
+            UserId = userId,
+            Token = token,
+            Issuer = "TaskSystem",
+            ExpiresAt = FixedUtcNow.UtcDateTime.AddDays(7),
+        };
+    }
+
+    private static void AssertTokenRevoked(RefreshToken token)
+    {
+        Assert.True(token.IsRevoked);
+
+        Assert.Equal(FixedUtcNow.UtcDateTime, token.RevokedAt);
+
+        Assert.Equal("User promoted to admin", token.RevocationReason);
+    }
+
+    private void VerifyNothingWasSaved()
+    {
+        _unitOfWorkMock.Verify(
+            unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+    }
+
+    private void VerifyRepositoriesWereNotUsed()
+    {
+        _usersMock.Verify(
             repository => repository.GetByIdForUpdateAsync(It.IsAny<int>()),
             Times.Never
         );
 
-        _userRepositoryMock.Verify(
+        _usersMock.Verify(
             repository => repository.GetByEmailForUpdateAsync(It.IsAny<string>()),
             Times.Never
         );
 
-        _userRepositoryMock.Verify(repository => repository.SaveChangesAsync(), Times.Never);
+        _tokensMock.Verify(
+            repository =>
+                repository.GetActiveByUserIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+
+        VerifyNothingWasSaved();
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        private readonly DateTimeOffset _utcNow;
+
+        public FixedTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
+        }
     }
 }

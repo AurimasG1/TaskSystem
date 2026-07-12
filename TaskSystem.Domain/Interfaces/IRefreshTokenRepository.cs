@@ -8,4 +8,8 @@ public interface IRefreshTokenRepository : IRepository<RefreshToken>
     Task<List<RefreshToken>> GetExpiredAsync();
     Task<List<RefreshToken>> GetRevokedAsync();
     Task DeleteRangeAsync(List<RefreshToken> tokens);
+    Task<List<RefreshToken>> GetActiveByUserIdAsync(
+        int userId,
+        CancellationToken cancellationToken = default
+    );
 }
