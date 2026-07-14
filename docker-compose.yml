@@ -22,8 +22,6 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-tasksystem}
       MYSQL_USER: ${MYSQL_USER:-tasksystem_app}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
-    ports:
-      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
       - tasksystem_mysql_data:/var/lib/mysql
     healthcheck:
