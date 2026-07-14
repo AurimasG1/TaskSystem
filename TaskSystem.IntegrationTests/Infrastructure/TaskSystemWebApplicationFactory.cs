@@ -31,6 +31,26 @@ public sealed class TaskSystemWebApplicationFactory : WebApplicationFactory<Prog
     public const string TestJwtKey =
         "integration-tests-jwt-secret-key-" + "that-is-longer-than-thirty-two-characters";
 
+    private Dictionary<string, string?> CreateTestSettings()
+    {
+        return new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:DefaultConnection"] = _connectionString,
+            ["Jwt:Key"] = TestJwtKey,
+            ["Jwt:Issuer"] = TestJwtIssuer,
+        };
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        builder.ConfigureHostConfiguration(configuration =>
+        {
+            configuration.AddInMemoryCollection(CreateTestSettings());
+        });
+
+        return base.CreateHost(builder);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         /*
@@ -42,15 +62,7 @@ public sealed class TaskSystemWebApplicationFactory : WebApplicationFactory<Prog
         builder.ConfigureAppConfiguration(
             (_, configuration) =>
             {
-                Dictionary<string, string?> settings = new()
-                {
-                    ["ConnectionStrings:DefaultConnection"] = _connectionString,
-
-                    ["Jwt:Key"] = TestJwtKey,
-                    ["Jwt:Issuer"] = TestJwtIssuer,
-                };
-
-                configuration.AddInMemoryCollection(settings);
+                configuration.AddInMemoryCollection(CreateTestSettings());
             }
         );
 
