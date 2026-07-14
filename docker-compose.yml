@@ -82,6 +82,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    volumes:
+      - tasksystem_data_protection_keys:/home/app/.aspnet/DataProtection-Keys
 
 volumes:
   tasksystem_mysql_data:
+  tasksystem_data_protection_keys:
