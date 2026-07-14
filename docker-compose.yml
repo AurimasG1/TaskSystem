@@ -23,7 +23,7 @@ services:
       MYSQL_USER: ${MYSQL_USER:-tasksystem_app}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
       - tasksystem_mysql_data:/var/lib/mysql
     healthcheck:
@@ -67,7 +67,7 @@ services:
     environment:
       <<: *api-environment
     ports:
-      - "${API_PORT:-8080}:8080"
+      - "127.0.0.1:${API_PORT:-8080}:8080"
     healthcheck:
       test:
         [
