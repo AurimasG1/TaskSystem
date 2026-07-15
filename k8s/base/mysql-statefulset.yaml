@@ -18,6 +18,8 @@ spec:
         app.kubernetes.io/name: mysql
         app.kubernetes.io/part-of: tasksystem
     spec:
+      automountServiceAccountToken: false
+      
       containers:
         - name: mysql
           image: mysql:8.0
