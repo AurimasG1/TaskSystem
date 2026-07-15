@@ -98,14 +98,13 @@ jobs:
       JWT_KEY: ci-only-secret-key-that-is-longer-than-32-characters
       JWT_ISSUER: TaskSystemAPI
       API_PORT: 8080
-      MYSQL_PORT: 3306
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
       - name: Validate Docker Compose
-        run: docker compose config
+        run: docker compose config --quiet
 
       - name: Build and start stack
         run: docker compose up --build -d
