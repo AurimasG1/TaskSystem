@@ -28,3 +28,6 @@ docker-compose.override.yml
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Local Kubernetes secrets
+k8s/overlays/local/secrets.env
