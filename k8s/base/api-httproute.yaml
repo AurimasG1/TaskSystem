@@ -1,0 +1,26 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: tasksystem-api
+  namespace: tasksystem
+  labels:
+    app.kubernetes.io/name: tasksystem
+    app.kubernetes.io/component: api-route
+
+spec:
+  parentRefs:
+    - name: tasksystem-gateway
+      sectionName: http
+
+  hostnames:
+    - "api.tasksystem.local"
+
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+      backendRefs:
+        - name: tasksystem-api
+          port: 8080

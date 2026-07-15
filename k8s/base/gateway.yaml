@@ -1,0 +1,21 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: tasksystem-gateway
+  namespace: tasksystem
+  labels:
+    app.kubernetes.io/name: tasksystem
+    app.kubernetes.io/component: gateway
+
+spec:
+  gatewayClassName: cloud-provider-kind
+
+  listeners:
+    - name: http
+      hostname: "api.tasksystem.local"
+      protocol: HTTP
+      port: 80
+
+      allowedRoutes:
+        namespaces:
+          from: Same

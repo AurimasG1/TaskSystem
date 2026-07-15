@@ -9,6 +9,8 @@ resources:
   - api-data-protection-pvc.yaml
   - api-deployment.yaml
   - api-service.yaml
+  - gateway.yaml
+  - api-httproute.yaml
 
 configMapGenerator:
   - name: tasksystem-config
