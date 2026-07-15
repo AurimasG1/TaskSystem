@@ -1,0 +1,8 @@
+services:
+  api:
+    image: ghcr.io/aurimasg1/tasksystem:latest
+    build: null
+
+  migrate:
+    image: ghcr.io/aurimasg1/tasksystem:latest
+    build: null
