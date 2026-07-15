@@ -15,3 +15,7 @@ generatorOptions:
   labels:
     app.kubernetes.io/name: tasksystem
     app.kubernetes.io/component: configuration
+    
+images:
+  - name: ghcr.io/aurimasg1/tasksystem
+    newTag: sha-ea5b03c05ca6b047e6100800a158d6085fe259a6
