@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tasksystem-config
+  namespace: tasksystem
+  labels:
+    app.kubernetes.io/name: tasksystem
+data:
+  ASPNETCORE_ENVIRONMENT: Development
+  ASPNETCORE_URLS: http://+:8080
+  Jwt__Issuer: TaskSystemAPI
+  MYSQL_DATABASE: tasksystem
+  MYSQL_USER: tasksystem_app
