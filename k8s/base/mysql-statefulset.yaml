@@ -6,31 +6,57 @@ metadata:
   labels:
     app.kubernetes.io/name: mysql
     app.kubernetes.io/part-of: tasksystem
+
 spec:
   serviceName: mysql
   replicas: 1
+
   selector:
     matchLabels:
       app.kubernetes.io/name: mysql
+
   template:
     metadata:
       labels:
         app.kubernetes.io/name: mysql
         app.kubernetes.io/part-of: tasksystem
+
     spec:
       automountServiceAccountToken: false
-      
+
       containers:
         - name: mysql
           image: mysql:8.0
+
           ports:
             - name: mysql
               containerPort: 3306
-          envFrom:
-            - configMapRef:
-                name: tasksystem-config
-            - secretRef:
-                name: tasksystem-secrets
+
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: tasksystem-config
+                  key: MYSQL_DATABASE
+
+            - name: MYSQL_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: tasksystem-config
+                  key: MYSQL_USER
+
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tasksystem-secrets
+                  key: MYSQL_PASSWORD
+
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tasksystem-secrets
+                  key: MYSQL_ROOT_PASSWORD
+
           readinessProbe:
             exec:
               command:
@@ -41,6 +67,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 30
+
           livenessProbe:
             exec:
               command:
@@ -51,9 +78,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
-          volumeMounts:
-            - name: mysql-data
-              mountPath: /var/lib/mysql
+
           resources:
             requests:
               cpu: 100m
@@ -61,6 +86,11 @@ spec:
             limits:
               cpu: "1"
               memory: 1Gi
+
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+
   volumeClaimTemplates:
     - metadata:
         name: mysql-data
