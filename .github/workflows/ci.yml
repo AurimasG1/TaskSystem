@@ -29,7 +29,7 @@ jobs:
       Jwt__Key: ci-only-secret-key-that-is-longer-than-32-characters
       Jwt__Issuer: TaskSystemAPI
 
-  services:
+    services:
       mysql:
         image: mysql:8.0
         env:
@@ -43,7 +43,7 @@ jobs:
           --health-timeout=5s
           --health-retries=30
 
-  steps:
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
