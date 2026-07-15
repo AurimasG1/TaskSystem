@@ -12,6 +12,7 @@ resources:
   - gateway.yaml
   - api-httproute.yaml
   - mysql-networkpolicy.yaml
+  - api-hpa.yaml
 
 configMapGenerator:
   - name: tasksystem-config
