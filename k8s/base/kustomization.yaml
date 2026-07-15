@@ -6,3 +6,7 @@ resources:
   - configmap.yaml
   - mysql-service.yaml
   - mysql-statefulset.yaml
+  - migration-job.yaml
+  - api-data-protection-pvc.yaml
+  - api-deployment.yaml
+  - api-service.yaml
