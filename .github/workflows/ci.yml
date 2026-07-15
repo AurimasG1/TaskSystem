@@ -67,13 +67,7 @@ jobs:
           --configuration Release
           --no-build
           --verbosity normal
-
-      - name: Install EF Core CLI
-        run: >
-          dotnet tool install
-          --global dotnet-ef
-          --version 9.0.17
-
+          
       - name: Restore local .NET tools
         run: dotnet tool restore
 
