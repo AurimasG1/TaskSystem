@@ -182,6 +182,8 @@ Create the local Kubernetes secrets file:
 ```bash
 cp k8s/overlays/local/secrets.env.example \
   k8s/overlays/local/secrets.env
+'''
+
 
 ## Quick start with Docker
 
