@@ -10,6 +10,8 @@ ROOT_DIR="$(
 OVERLAY_DIR="${ROOT_DIR}/k8s/overlays/local"
 NAMESPACE="tasksystem"
 MIGRATION_JOB="tasksystem-migrate"
+KUBE_CONTEXT="kind-tasksystem-dev"
+KIND_NODE_CONTAINER="tasksystem-dev-control-plane"
 
 error_handler() {
   exit_code=$?
@@ -34,11 +36,86 @@ for command in kubectl docker; do
   fi
 done
 
-if ! kubectl cluster-info >/dev/null 2>&1; then
-  echo "Kubernetes cluster is not reachable." >&2
-  echo "Current context: $(kubectl config current-context 2>/dev/null || echo none)" >&2
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker Engine is not reachable." >&2
+  echo "Start Docker Desktop and run this script again." >&2
   exit 1
 fi
+
+current_context="$(
+  kubectl config current-context 2>/dev/null ||
+  true
+)"
+
+if [[ "${current_context}" != "${KUBE_CONTEXT}" ]]; then
+  echo "Unexpected Kubernetes context." >&2
+  echo "Expected: ${KUBE_CONTEXT}" >&2
+  echo "Current:  ${current_context:-none}" >&2
+  exit 1
+fi
+
+if ! docker container inspect "${KIND_NODE_CONTAINER}" >/dev/null 2>&1; then
+  echo "Kind control-plane container does not exist:" >&2
+  echo "  ${KIND_NODE_CONTAINER}" >&2
+  echo "The local kind cluster may need to be recreated." >&2
+  exit 1
+fi
+
+node_state="$(
+  docker container inspect \
+    --format '{{.State.Status}}' \
+    "${KIND_NODE_CONTAINER}"
+)"
+
+case "${node_state}" in
+  running)
+    echo "Kind control-plane container is running."
+    ;;
+
+  exited | created)
+    echo "Starting kind control-plane container..."
+    docker start "${KIND_NODE_CONTAINER}" >/dev/null
+    ;;
+
+  paused)
+    echo "Unpausing kind control-plane container..."
+    docker unpause "${KIND_NODE_CONTAINER}" >/dev/null
+    ;;
+
+  restarting)
+    echo "Kind control-plane container is restarting..."
+    ;;
+
+  *)
+    echo "Unsupported control-plane container state: ${node_state}" >&2
+    exit 1
+    ;;
+esac
+
+echo "Waiting for Kubernetes API server..."
+
+cluster_ready=false
+
+for _ in $(seq 1 60); do
+  if kubectl get --raw='/readyz' >/dev/null 2>&1; then
+    cluster_ready=true
+    break
+  fi
+
+  sleep 2
+done
+
+if [[ "${cluster_ready}" != "true" ]]; then
+  echo "Kubernetes API server did not become ready within 120 seconds." >&2
+
+  docker ps -a \
+    --filter "name=^/${KIND_NODE_CONTAINER}$" \
+    --format 'table {{.Names}}\t{{.Status}}' >&2
+
+  exit 1
+fi
+
+echo "Kubernetes cluster is ready."
 
 if [[ ! -f "${OVERLAY_DIR}/secrets.env" ]]; then
   echo "Missing local secrets file:" >&2
