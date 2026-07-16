@@ -182,7 +182,7 @@ Create the local Kubernetes secrets file:
 ```bash
 cp k8s/overlays/local/secrets.env.example \
   k8s/overlays/local/secrets.env
-````
+```
 
 Replace the example values in `secrets.env` with local credentials. This file
 is ignored by Git and must not be committed.
