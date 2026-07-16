@@ -152,6 +152,37 @@ Swagger contains the current endpoint list, request schemas, and JWT authorizati
 
 ![Swagger API overview](docs/screenshots/swagger-1.png)
 
+## Local Kubernetes environment
+
+The application can also run in a local Kubernetes cluster created with
+[kind](https://kind.sigs.k8s.io/).
+
+The Kubernetes environment includes:
+
+- MySQL deployed as a StatefulSet with persistent storage
+- database migrations executed as a one-shot Job
+- API Deployment with startup, readiness, and liveness probes
+- Gateway API and HTTPRoute routing through Envoy
+- Horizontal Pod Autoscaler based on CPU utilization
+- NetworkPolicy restricting MySQL access
+- namespace resource limits and quotas
+- versioned ConfigMaps and generated Secrets
+- Kubernetes manifest validation with Kustomize and Kubeconform
+
+### Local prerequisites
+
+- Docker Desktop with WSL integration
+- WSL Ubuntu
+- `kubectl`
+- `kind`
+- `cloud-provider-kind`
+
+Create the local Kubernetes secrets file:
+
+```bash
+cp k8s/overlays/local/secrets.env.example \
+  k8s/overlays/local/secrets.env
+
 ## Quick start with Docker
 
 ### Prerequisites
