@@ -182,8 +182,68 @@ Create the local Kubernetes secrets file:
 ```bash
 cp k8s/overlays/local/secrets.env.example \
   k8s/overlays/local/secrets.env
-'''
+````
 
+Replace the example values in `secrets.env` with local credentials. This file
+is ignored by Git and must not be committed.
+
+### Start the local cluster
+
+Docker Desktop must be running before executing the script:
+
+```bash
+./scripts/start-local-cluster.sh
+```
+
+The script starts the kind control-plane, waits for the Kubernetes API, starts
+`cloud-provider-kind`, waits for the Gateway, and prints the dynamically
+assigned Gateway host port.
+
+### Deploy the application
+
+```bash
+./scripts/deploy-local.sh
+```
+
+The deployment script validates the manifests, performs a Kubernetes
+server-side dry run, recreates the migration Job, applies the manifests, and
+waits for MySQL, migrations, and the API.
+
+### Run the smoke test
+
+```bash
+./scripts/smoke-test-local.sh
+```
+
+The smoke test verifies:
+
+- Kubernetes API readiness
+- MySQL and API rollout status
+- database migration completion
+- Gateway and HTTPRoute status
+- HTTP `200` from `/health`
+- HTTP `401` from `/api/user/me` without a JWT
+
+The Gateway host port is assigned dynamically. The smoke-test script discovers
+it automatically, so no Windows `hosts` file modification is required.
+
+### Stop the local cluster
+
+```bash
+./scripts/stop-local-cluster.sh
+```
+
+The stop script stops the local Gateway provider and kind control-plane without
+deleting the cluster or persistent data.
+
+### Complete local workflow
+
+```bash
+./scripts/start-local-cluster.sh
+./scripts/deploy-local.sh
+./scripts/smoke-test-local.sh
+./scripts/stop-local-cluster.sh
+```
 
 ## Quick start with Docker
 
